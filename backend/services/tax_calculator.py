@@ -29,27 +29,33 @@ class TaxCalculator:
     def calculate_tax(self, revenue: float, category: str):
         """
         Tính thuế cho hộ kinh doanh dựa trên công thức cứng.
-        Quy định: Doanh thu <= 100 triệu/năm được miễn thuế.
+        Quy định mới (2026): Doanh thu <= 500 triệu/năm được miễn thuế.
+        Thuế chỉ tính trên phần doanh thu VƯỢT 500 triệu.
         """
-        if revenue <= 100000000:
+        if revenue <= 500000000:
             return {
                 "is_taxable": False,
-                "reason": "Doanh thu dưới 100 triệu VNĐ/năm, được miễn thuế theo quy định.",
+                "reason": "Doanh thu dưới 500 triệu VNĐ/năm, được miễn thuế GTGT và TNCN theo quy định mới.",
                 "tax_gtgt": 0,
                 "tax_tncn": 0,
                 "total_tax": 0
             }
             
         rate = self.tax_rates.get(category, self.tax_rates["hoat_dong_khac"])
-        tax_gtgt = revenue * rate["gtgt"]
-        tax_tncn = revenue * rate["tncn"]
+        
+        # Phần doanh thu tính thuế
+        taxable_revenue = revenue - 500000000
+        
+        tax_gtgt = taxable_revenue * rate["gtgt"]
+        tax_tncn = taxable_revenue * rate["tncn"]
         
         return {
             "is_taxable": True,
             "revenue": revenue,
+            "taxable_revenue": taxable_revenue,
             "category": category,
             "tax_gtgt": tax_gtgt,
             "tax_tncn": tax_tncn,
             "total_tax": tax_gtgt + tax_tncn,
-            "explanation": f"Ngành nghề: {category}. Tỷ lệ GTGT: {rate['gtgt']*100}%, Tỷ lệ TNCN: {rate['tncn']*100}%."
+            "explanation": f"Ngành nghề: {category}. Theo quy định 2026, chỉ tính thuế phần doanh vượt 500 triệu (tức là {taxable_revenue:,.0f} VNĐ). Tỷ lệ GTGT: {rate['gtgt']*100}%, Tỷ lệ TNCN: {rate['tncn']*100}%."
         }

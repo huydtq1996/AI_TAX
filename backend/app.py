@@ -26,12 +26,15 @@ def health_check():
 
 @app.route('/api/chat', methods=['POST'])
 def chat():
-    data = request.json
-    user_message = data.get('message', '')
-    revenue = data.get('revenue', 0)
-    category = data.get('category', 'hoat_dong_khac')
+    # Nhận dữ liệu dạng Form Data (Hỗ trợ File)
+    user_message = request.form.get('message', '')
+    revenue_str = request.form.get('revenue', '0')
+    revenue = float(revenue_str) if revenue_str else 0
+    category = request.form.get('category', 'hoat_dong_khac')
     
-    if not user_message:
+    file = request.files.get('file')
+    
+    if not user_message and not file:
         return jsonify({"error": "Message is required"}), 400
         
     # 1. Guard Service - Chống Prompt Injection
@@ -50,13 +53,24 @@ def chat():
         tax_result = tax_calculator.calculate_tax(float(revenue), category)
         legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
         
-    # 4. Gemini API - Tư vấn
-    ai_response = gemini_service.generate_response(user_message, context=legal_context)
+    # Xử lý File Upload
+    file_path = None
+    if file:
+        os.makedirs("uploads", exist_ok=True)
+        file_path = os.path.join("uploads", file.filename)
+        file.save(file_path)
+        
+    # 4. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
+    ai_response = gemini_service.generate_response(user_message, context=legal_context, file_path=file_path)
+    
+    # Dọn dẹp file tạm
+    if file_path and os.path.exists(file_path):
+        os.remove(file_path)
     
     response = {
         "text": ai_response,
         "tax_table": tax_result,
-        "sources": ["Thông tư 40/2021/TT-BTC"]
+        "sources": ["Luật Thuế GTGT 2024","Nghị định 141/2026/NĐ-CP","Nghị định 68/2026/NĐ-CP","Thông tư 18/2026/TT-BTC","Nghị định 117/2025/NĐ-CP"] if legal_context else []
     }
     
     return jsonify(response)

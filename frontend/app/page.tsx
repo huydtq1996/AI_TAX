@@ -32,8 +32,10 @@ export default function Home() {
   const [category, setCategory] = useState("hoat_dong_khac");
   const [taxData, setTaxData] = useState<TaxData | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (chatWindowRef.current) {
@@ -83,20 +85,24 @@ export default function Home() {
       { id: typingId, text: "Đang suy nghĩ...", isUser: false, isTyping: true },
     ]);
 
+    const formData = new FormData();
+    formData.append("message", text);
+    formData.append("revenue", forceRevenue.toString() || "0");
+    formData.append("category", forceCat || "hoat_dong_khac");
+    if (selectedFile) {
+      formData.append("file", selectedFile);
+    }
+
     try {
       const response = await fetch("http://localhost:5000/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          message: text,
-          revenue: forceRevenue || 0,
-          category: forceCat || "hoat_dong_khac"
-        }),
+        body: formData,
       });
 
       const data = await response.json();
 
       setMessages((prev) => prev.filter((m) => m.id !== typingId));
+      setSelectedFile(null); // Clear file sau khi gửi
 
       if (data.error) {
         setMessages((prev) => [
@@ -163,6 +169,16 @@ export default function Home() {
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleAttachClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const renderFormattedText = (text: string) => {
     // Basic Markdown parser for the simple responses we get
     let html = text
@@ -208,6 +224,12 @@ export default function Home() {
           </div>
 
           <div className="input-area">
+            {selectedFile && (
+              <div className="file-preview">
+                <i className="fa-solid fa-file-invoice"></i> Đã đính kèm: {selectedFile.name}
+                <button onClick={() => setSelectedFile(null)}><i className="fa-solid fa-xmark"></i></button>
+              </div>
+            )}
             <form onSubmit={onChatSubmit} className="chat-form">
               <button
                 type="button"
@@ -218,17 +240,26 @@ export default function Home() {
               >
                 <i className={`fa-solid ${isRecording ? "fa-stop" : "fa-microphone"}`}></i>
               </button>
-              <button type="button" className="icon-button file-btn" title="Đính kèm file/ảnh">
+              
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleFileChange} 
+                style={{ display: "none" }} 
+                accept=".xlsx,.xls,.csv,.pdf,image/*" 
+              />
+              <button type="button" className="icon-button file-btn" onClick={handleAttachClick} title="Đính kèm Excel/PDF/Ảnh hóa đơn">
                 <i className="fa-solid fa-paperclip"></i>
               </button>
+              
               <input
                 type="text"
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={isRecording ? "Đang nghe..." : "Hỏi đáp tiếng Việt (VD: Doanh thu 150tr/năm thì nộp thuế bao nhiêu?)..."}
+                placeholder={isRecording ? "Đang nghe..." : "Nhập câu hỏi hoặc gửi ảnh tờ khai/hóa đơn..."}
                 autoComplete="off"
               />
-              <button type="submit" className="primary-button send-btn" disabled={!inputMessage.trim()}>
+              <button type="submit" className="primary-button send-btn" disabled={!inputMessage.trim() && !selectedFile}>
                 <i className="fa-solid fa-paper-plane"></i> Gửi
               </button>
             </form>
@@ -247,7 +278,7 @@ export default function Home() {
                   type="number"
                   value={revenue}
                   onChange={(e) => setRevenue(e.target.value)}
-                  placeholder="VD: 150000000"
+                  placeholder="VD: 600000000"
                   required
                 />
               </div>
@@ -305,6 +336,10 @@ export default function Home() {
                     <div className="tax-item">
                       <span>Doanh thu:</span>
                       <strong>{formatVND(taxData.revenue || 0)}</strong>
+                    </div>
+                    <div className="tax-item">
+                      <span>Doanh thu tính thuế (vượt 500tr):</span>
+                      <strong>{formatVND((taxData as any).taxable_revenue || 0)}</strong>
                     </div>
                     <div className="tax-item">
                       <span>Thuế GTGT:</span>

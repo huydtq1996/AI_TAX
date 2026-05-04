@@ -11,7 +11,7 @@ class GeminiService:
             self.model = None
             print("Warning: GEMINI_API_KEY is not set.")
 
-    def generate_response(self, prompt, context=""):
+    def generate_response(self, prompt, context="", file_path=None):
         if not self.model:
             return "Lỗi: Chưa cấu hình GEMINI_API_KEY."
             
@@ -24,13 +24,20 @@ class GeminiService:
         
         Yêu cầu:
         1. Trả lời chính xác, dựa vào 'Ngữ cảnh pháp lý' nếu có.
-        2. Nếu có tính toán thuế, hãy sử dụng kết quả tính toán được cung cấp, không tự bịa ra số liệu.
-        3. Văn phong đơn giản, dễ hiểu cho chủ hộ kinh doanh, không dùng từ ngữ quá hàn lâm.
-        4. Trích dẫn điều luật (Thông tư, Nghị định) từ ngữ cảnh nếu có.
+        2. Nếu người dùng đính kèm file (hóa đơn, tờ khai, bảng tính), hãy đọc kỹ file, trích xuất số liệu và tư vấn dựa trên đó.
+        3. Nếu có tính toán thuế, hãy sử dụng kết quả tính toán được cung cấp, không tự bịa ra số liệu.
+        4. Trích dẫn điều luật từ ngữ cảnh nếu có.
+        5. Nếu được yêu cầu lập kế hoạch kinh doanh, hãy ước tính Doanh thu, Chi phí, Lợi nhuận và đưa ra lời khuyên.
         """
         
         try:
-            response = self.model.generate_content(full_prompt)
+            contents = [full_prompt]
+            if file_path and os.path.exists(file_path):
+                print(f"Uploading file to Gemini: {file_path}")
+                sample_file = genai.upload_file(path=file_path)
+                contents.insert(0, sample_file)
+
+            response = self.model.generate_content(contents)
             return response.text
         except Exception as e:
             return f"Lỗi khi gọi Gemini API: {str(e)}"

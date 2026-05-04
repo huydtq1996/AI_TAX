@@ -324,3 +324,5 @@ body {
 .message-bubble ul, .message-bubble ol { margin-left: 1.5rem; margin-bottom: 0.5rem; }
 .message-bubble strong { font-weight: 600; color: #000; }
 .user-message .message-bubble strong { color: #fff; }
+
+.file-preview { display: flex; align-items: center; justify-content: space-between; background-color: #e0f2fe; color: #0369a1; padding: 8px 12px; border-radius: 8px; margin-bottom: 10px; font-size: 0.9rem; font-weight: 500; } .file-preview button { background: none; border: none; color: #0369a1; cursor: pointer; font-size: 1.1rem; }
