@@ -4,7 +4,8 @@ import json
 import argparse
 import requests
 import re
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from dotenv import load_dotenv
 
 # Tải các biến môi trường
@@ -12,23 +13,28 @@ load_dotenv()
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 SUPABASE_URL = os.getenv("SUPABASE_URL")
-# Lấy Service Key (ưu tiên) hoặc Anon Key
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
 
-genai.configure(api_key=GEMINI_API_KEY)
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 # ==========================================
 # 1. TƯƠNG TÁC SUPABASE VECTOR DB
 # ==========================================
-def embed_text(text):
+def embed_text(text, title=None):
     """Biến đổi văn bản thành Vector đa ngôn ngữ (768 chiều)"""
     try:
-        result = genai.embed_content(
-            model="models/embedding-001",
-            content=text,
-            task_type="retrieval_document"
-        )
-        return result['embedding']
+        kwargs = {
+            "model": "gemini-embedding-2",
+            "contents": text,
+            "config": types.EmbedContentConfig(
+                task_type="RETRIEVAL_DOCUMENT"
+            )
+        }
+        if title:
+            kwargs["config"].title = title
+            
+        result = client.models.embed_content(**kwargs)
+        return result.embeddings[0].values
     except Exception as e:
         print(f"Lỗi nhúng văn bản: {e}")
         return None
@@ -51,8 +57,7 @@ def insert_to_supabase(data):
 # ==========================================
 def extract_and_chunk_with_gemini(content_parts):
     print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu (Auto-Chunking)...")
-    # Sử dụng model đa năng của Gemini
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model_name = "gemini-2.5-flash"
     
     prompt = """
     Bạn là một chuyên gia Pháp lý và Thuế. Hãy đọc tài liệu đính kèm và trích xuất các điều luật, quy định quan trọng.
@@ -73,7 +78,10 @@ def extract_and_chunk_with_gemini(content_parts):
         parts = content_parts if isinstance(content_parts, list) else [content_parts]
         parts.append(prompt)
         
-        response = model.generate_content(parts)
+        response = client.models.generate_content(
+            model=model_name,
+            contents=parts
+        )
         
         # Xử lý text để chắc chắn là JSON hợp lệ
         text_resp = response.text.strip()
@@ -162,7 +170,7 @@ def main():
     print("\n🗄️ Đang lưu từng đoạn vào cơ sở dữ liệu Supabase...")
     for idx, item in enumerate(chunks):
         print(f"  > Đang nhúng Vector ({idx+1}/{len(chunks)})...")
-        vector = embed_text(item["content"])
+        vector = embed_text(item["content"], item.get("title"))
         if vector:
             row = {
                 "title": item.get("title", "Tài liệu luật"),

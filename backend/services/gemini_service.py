@@ -1,18 +1,19 @@
 import os
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 class GeminiService:
     def __init__(self):
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
-            genai.configure(api_key=api_key)
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            self.client = genai.Client(api_key=api_key)
+            self.model_name = 'gemini-2.5-flash'
         else:
-            self.model = None
+            self.client = None
             print("Warning: GEMINI_API_KEY is not set.")
 
     def generate_response(self, prompt, context="", file_path=None):
-        if not self.model:
+        if not self.client:
             return "Lỗi: Chưa cấu hình GEMINI_API_KEY."
             
         full_prompt = f"""
@@ -34,24 +35,29 @@ class GeminiService:
             contents = [full_prompt]
             if file_path and os.path.exists(file_path):
                 print(f"Uploading file to Gemini: {file_path}")
-                sample_file = genai.upload_file(path=file_path)
+                sample_file = self.client.files.upload(file=file_path)
                 contents.insert(0, sample_file)
 
-            response = self.model.generate_content(contents)
+            response = self.client.models.generate_content(
+                model=self.model_name,
+                contents=contents
+            )
             return response.text
         except Exception as e:
             return f"Lỗi khi gọi Gemini API: {str(e)}"
             
     def embed_text(self, text):
-        if not self.model or not text:
+        if not self.client or not text:
             return None
         try:
-            result = genai.embed_content(
-                model="models/embedding-001",
-                content=text,
-                task_type="retrieval_query"
+            result = self.client.models.embed_content(
+                model="gemini-embedding-2",
+                contents=text,
+                config=types.EmbedContentConfig(
+                    task_type="RETRIEVAL_QUERY"
+                )
             )
-            return result['embedding']
+            return result.embeddings[0].values
         except Exception as e:
             print(f"Lỗi khi nhúng văn bản: {str(e)}")
             return None
