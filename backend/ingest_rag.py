@@ -24,7 +24,7 @@ def embed_text(text):
     """Biến đổi văn bản thành Vector đa ngôn ngữ (768 chiều)"""
     try:
         result = genai.embed_content(
-            model="models/gemini-embedding-001",
+            model="models/embedding-001",
             content=text,
             task_type="retrieval_document"
         )
@@ -51,7 +51,7 @@ def insert_to_supabase(data):
 # ==========================================
 def extract_and_chunk_with_gemini(content_parts):
     print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu (Auto-Chunking)...")
-    # Sử dụng model đa năng của Gemini (bản 2.5 flash cho free-tier)
+    # Sử dụng model đa năng của Gemini
     model = genai.GenerativeModel("gemini-2.5-flash")
     
     prompt = """
