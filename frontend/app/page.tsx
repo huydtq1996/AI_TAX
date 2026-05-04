@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, FormEvent } from "react";
+import { supabase } from '../utils/supabase';
 
 type Message = {
   id: string;
@@ -29,12 +30,14 @@ export default function Home() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [revenue, setRevenue] = useState("");
+  const [category, setCategory] = useState("hoat_dong_khac");
+  const [taxData, setTaxData] = useState<TaxData | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
-  
+
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -50,15 +53,15 @@ export default function Home() {
         const { data } = await supabase.auth.signInAnonymously();
         if (data?.session) token = data.session.access_token;
       }
-      
+
       setUserToken(token);
-      
+
       // Load lịch sử chat
       const { data: sessions } = await supabase
         .from('chat_sessions')
         .select('*')
         .order('created_at', { ascending: false });
-        
+
       if (sessions && sessions.length > 0) {
         setChatSessions(sessions);
         loadSession(sessions[0].id); // Tự động load phiên gần nhất
@@ -77,14 +80,14 @@ export default function Home() {
       .select('*')
       .eq('session_id', sessionId)
       .order('created_at', { ascending: true });
-      
+
     if (msgs && msgs.length > 0) {
       setMessages(msgs.map((m: any) => ({
         id: m.id,
         text: m.content,
         isUser: m.role === 'user'
       })));
-      
+
       // Nếu có bảng tính thuế từ tin nhắn cuối cùng, hiển thị lại
       const lastBotMsg = msgs.reverse().find((m: any) => m.role === 'assistant' && m.tax_result_snapshot);
       if (lastBotMsg) setTaxData(lastBotMsg.tax_result_snapshot);
@@ -172,7 +175,7 @@ export default function Home() {
         setCurrentSessionId(data.session_id);
         // Refresh danh sách bên trái (giả lập)
         if (!chatSessions.find(s => s.id === data.session_id)) {
-           setChatSessions([{id: data.session_id, title: text.substring(0, 30) + '...'}, ...chatSessions]);
+          setChatSessions([{ id: data.session_id, title: text.substring(0, 30) + '...' }, ...chatSessions]);
         }
       }
 
@@ -224,7 +227,7 @@ export default function Home() {
       san_xuat_ttdb: "Sản xuất hàng chịu thuế Tiêu thụ đặc biệt",
       hoat_dong_khac: "Hoạt động kinh doanh khác"
     };
-    
+
     const catText = categories[category];
     const msg = `Tính thuế cho tôi. Doanh thu: ${formatVND(Number(revenue))}, Ngành nghề: ${catText}. Hãy giải thích chi tiết bảng tính thuế này.`;
     handleSendMessage(msg, Number(revenue), category);
@@ -232,7 +235,7 @@ export default function Home() {
 
   const toggleVoice = () => {
     if (!recognitionRef.current) return;
-    
+
     if (isRecording) {
       recognitionRef.current.stop();
     } else {
@@ -264,18 +267,18 @@ export default function Home() {
     <div className="layout" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       {/* SIDEBAR TƯƠNG TỰ GEMINI */}
       <div className="sidebar" style={{ width: '280px', backgroundColor: '#f0f4f9', padding: '15px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0', overflowY: 'hidden' }}>
-        <button 
+        <button
           onClick={createNewSession}
           style={{ backgroundColor: '#fff', border: 'none', borderRadius: '20px', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '14px' }}>
           <i className="fa-solid fa-plus"></i> Cuộc trò chuyện mới
         </button>
-        
+
         <div style={{ marginTop: '20px', flex: 1, overflowY: 'auto' }}>
           <h4 style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', marginBottom: '10px', marginLeft: '5px' }}>Lịch sử trò chuyện</h4>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {chatSessions.map((session) => (
               <li key={session.id}>
-                <button 
+                <button
                   onClick={() => loadSession(session.id)}
                   style={{ width: '100%', textAlign: 'left', padding: '12px 10px', border: 'none', borderRadius: '8px', backgroundColor: currentSessionId === session.id ? '#d3e3fd' : 'transparent', color: currentSessionId === session.id ? '#041e49' : '#444', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
                   <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title}
@@ -297,167 +300,167 @@ export default function Home() {
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           <div className="chat-section" style={{ flex: 1 }}>
-          <div className="chat-window" ref={chatWindowRef}>
-            {messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`message ${msg.isUser ? "user-message" : "ai-message"}`}
-              >
-                <div className="message-avatar">
-                  <i className={`fa-solid ${msg.isUser ? "fa-user" : "fa-robot"}`}></i>
+            <div className="chat-window" ref={chatWindowRef}>
+              {messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className={`message ${msg.isUser ? "user-message" : "ai-message"}`}
+                >
+                  <div className="message-avatar">
+                    <i className={`fa-solid ${msg.isUser ? "fa-user" : "fa-robot"}`}></i>
+                  </div>
+                  <div className="message-bubble">
+                    {msg.isTyping ? (
+                      <p>
+                        <i className="fa-solid fa-ellipsis fa-fade"></i> {msg.text}
+                      </p>
+                    ) : (
+                      renderFormattedText(msg.text)
+                    )}
+                  </div>
                 </div>
-                <div className="message-bubble">
-                  {msg.isTyping ? (
-                    <p>
-                      <i className="fa-solid fa-ellipsis fa-fade"></i> {msg.text}
-                    </p>
+              ))}
+            </div>
+
+            <div className="input-area">
+              {selectedFile && (
+                <div className="file-preview">
+                  <i className="fa-solid fa-file-invoice"></i> Đã đính kèm: {selectedFile.name}
+                  <button onClick={() => setSelectedFile(null)}><i className="fa-solid fa-xmark"></i></button>
+                </div>
+              )}
+              <form onSubmit={onChatSubmit} className="chat-form">
+                <button
+                  type="button"
+                  className="icon-button voice-btn"
+                  onClick={toggleVoice}
+                  title="Nhập bằng giọng nói"
+                  style={{ color: isRecording ? "red" : undefined }}
+                >
+                  <i className={`fa-solid ${isRecording ? "fa-stop" : "fa-microphone"}`}></i>
+                </button>
+
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  style={{ display: "none" }}
+                  accept=".xlsx,.xls,.csv,.pdf,image/*"
+                />
+                <button type="button" className="icon-button file-btn" onClick={handleAttachClick} title="Đính kèm Excel/PDF/Ảnh hóa đơn">
+                  <i className="fa-solid fa-paperclip"></i>
+                </button>
+
+                <input
+                  type="text"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  placeholder={isRecording ? "Đang nghe..." : "Nhập câu hỏi hoặc gửi ảnh tờ khai/hóa đơn..."}
+                  autoComplete="off"
+                />
+                <button type="submit" className="primary-button send-btn" disabled={!inputMessage.trim() && !selectedFile}>
+                  <i className="fa-solid fa-paper-plane"></i> Gửi
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="side-panel">
+            <div className="card tax-calc-card">
+              <h3>
+                <i className="fa-solid fa-calculator"></i> Tính thuế nhanh
+              </h3>
+              <form onSubmit={onTaxSubmit} className="tax-form">
+                <div className="form-group">
+                  <label>Doanh thu năm (VNĐ):</label>
+                  <input
+                    type="number"
+                    value={revenue}
+                    onChange={(e) => setRevenue(e.target.value)}
+                    placeholder="VD: 600000000"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Ngành nghề:</label>
+                  <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                    <optgroup label="1. Phân phối, cung cấp hàng hóa (1.5%)">
+                      <option value="ban_buon_ban_le">Bán buôn, bán lẻ hàng hóa (tạp hóa, siêu thị mini...)</option>
+                      <option value="ban_le_thuoc_my_pham">Bán lẻ thuốc, dụng cụ y tế, mỹ phẩm</option>
+                      <option value="phan_phoi_cung_cap_hang_hoa">Phân phối, cung cấp hàng hóa khác</option>
+                    </optgroup>
+                    <optgroup label="2. Dịch vụ, XD không bao thầu (7%)">
+                      <option value="nha_hang_quan_an_cafe">Dịch vụ lưu trú, nhà hàng, quán ăn, quán cafe</option>
+                      <option value="dich_vu_lam_dep_spa">Dịch vụ làm đẹp, cắt tóc, gội đầu, spa, massage</option>
+                      <option value="dich_vu_sua_chua">Dịch vụ sửa chữa (máy tính, đồ gia dụng, xe máy)</option>
+                      <option value="dich_vu_tu_van">Dịch vụ tư vấn, thiết kế, pháp luật, kế toán</option>
+                      <option value="xay_dung_khong_bao_thau">Xây dựng, lắp đặt không bao thầu nguyên vật liệu</option>
+                    </optgroup>
+                    <optgroup label="3. Sản xuất, vận tải, XD có bao thầu (4.5%)">
+                      <option value="san_xuat_gia_cong">Sản xuất, gia công hàng hóa</option>
+                      <option value="van_tai_hang_hoa_hanh_khach">Vận tải hàng hóa, vận tải hành khách</option>
+                      <option value="xay_dung_co_bao_thau">Xây dựng, lắp đặt có bao thầu nguyên vật liệu</option>
+                      <option value="san_xuat_van_tai_dich_vu_co_hang_hoa">Sản xuất, vận tải, dịch vụ có gắn hàng hóa khác</option>
+                    </optgroup>
+                    <optgroup label="4. Hoạt động kinh doanh khác (3%)">
+                      <option value="khai_thac_khoang_san">Khai thác tài nguyên, khoáng sản</option>
+                      <option value="san_xuat_ttdb">Sản xuất hàng chịu thuế Tiêu thụ đặc biệt</option>
+                      <option value="hoat_dong_khac">Hoạt động kinh doanh khác</option>
+                    </optgroup>
+                  </select>
+                </div>
+                <button type="submit" className="secondary-button">
+                  Tính Thuế & Tư Vấn
+                </button>
+              </form>
+            </div>
+
+            {taxData && (
+              <div className="card result-card" style={{ display: "block" }}>
+                <h3>Kết quả Tính Thuế</h3>
+                <div>
+                  {!taxData.is_taxable ? (
+                    <>
+                      <div className="tax-item">
+                        <span>Trạng thái:</span>
+                        <strong>Được miễn thuế</strong>
+                      </div>
+                      <div className="tax-item">
+                        <span>Lý do:</span>
+                        <span>{taxData.reason}</span>
+                      </div>
+                    </>
                   ) : (
-                    renderFormattedText(msg.text)
+                    <>
+                      <div className="tax-item">
+                        <span>Doanh thu:</span>
+                        <strong>{formatVND(taxData.revenue || 0)}</strong>
+                      </div>
+                      <div className="tax-item">
+                        <span>Doanh thu tính thuế (vượt 500tr):</span>
+                        <strong>{formatVND((taxData as any).taxable_revenue || 0)}</strong>
+                      </div>
+                      <div className="tax-item">
+                        <span>Thuế GTGT:</span>
+                        <span>{formatVND(taxData.tax_gtgt || 0)}</span>
+                      </div>
+                      <div className="tax-item">
+                        <span>Thuế TNCN:</span>
+                        <span>{formatVND(taxData.tax_tncn || 0)}</span>
+                      </div>
+                      <div className="tax-item tax-total">
+                        <span>Tổng thuế phải nộp:</span>
+                        <span>{formatVND(taxData.total_tax || 0)}</span>
+                      </div>
+                      <div style={{ marginTop: "10px", fontSize: "0.85rem", color: "#166534" }}>
+                        {taxData.explanation}
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
-            ))}
-          </div>
-
-          <div className="input-area">
-            {selectedFile && (
-              <div className="file-preview">
-                <i className="fa-solid fa-file-invoice"></i> Đã đính kèm: {selectedFile.name}
-                <button onClick={() => setSelectedFile(null)}><i className="fa-solid fa-xmark"></i></button>
-              </div>
             )}
-            <form onSubmit={onChatSubmit} className="chat-form">
-              <button
-                type="button"
-                className="icon-button voice-btn"
-                onClick={toggleVoice}
-                title="Nhập bằng giọng nói"
-                style={{ color: isRecording ? "red" : undefined }}
-              >
-                <i className={`fa-solid ${isRecording ? "fa-stop" : "fa-microphone"}`}></i>
-              </button>
-              
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                style={{ display: "none" }} 
-                accept=".xlsx,.xls,.csv,.pdf,image/*" 
-              />
-              <button type="button" className="icon-button file-btn" onClick={handleAttachClick} title="Đính kèm Excel/PDF/Ảnh hóa đơn">
-                <i className="fa-solid fa-paperclip"></i>
-              </button>
-              
-              <input
-                type="text"
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder={isRecording ? "Đang nghe..." : "Nhập câu hỏi hoặc gửi ảnh tờ khai/hóa đơn..."}
-                autoComplete="off"
-              />
-              <button type="submit" className="primary-button send-btn" disabled={!inputMessage.trim() && !selectedFile}>
-                <i className="fa-solid fa-paper-plane"></i> Gửi
-              </button>
-            </form>
           </div>
-        </div>
-
-        <div className="side-panel">
-          <div className="card tax-calc-card">
-            <h3>
-              <i className="fa-solid fa-calculator"></i> Tính thuế nhanh
-            </h3>
-            <form onSubmit={onTaxSubmit} className="tax-form">
-              <div className="form-group">
-                <label>Doanh thu năm (VNĐ):</label>
-                <input
-                  type="number"
-                  value={revenue}
-                  onChange={(e) => setRevenue(e.target.value)}
-                  placeholder="VD: 600000000"
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Ngành nghề:</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <optgroup label="1. Phân phối, cung cấp hàng hóa (1.5%)">
-                    <option value="ban_buon_ban_le">Bán buôn, bán lẻ hàng hóa (tạp hóa, siêu thị mini...)</option>
-                    <option value="ban_le_thuoc_my_pham">Bán lẻ thuốc, dụng cụ y tế, mỹ phẩm</option>
-                    <option value="phan_phoi_cung_cap_hang_hoa">Phân phối, cung cấp hàng hóa khác</option>
-                  </optgroup>
-                  <optgroup label="2. Dịch vụ, XD không bao thầu (7%)">
-                    <option value="nha_hang_quan_an_cafe">Dịch vụ lưu trú, nhà hàng, quán ăn, quán cafe</option>
-                    <option value="dich_vu_lam_dep_spa">Dịch vụ làm đẹp, cắt tóc, gội đầu, spa, massage</option>
-                    <option value="dich_vu_sua_chua">Dịch vụ sửa chữa (máy tính, đồ gia dụng, xe máy)</option>
-                    <option value="dich_vu_tu_van">Dịch vụ tư vấn, thiết kế, pháp luật, kế toán</option>
-                    <option value="xay_dung_khong_bao_thau">Xây dựng, lắp đặt không bao thầu nguyên vật liệu</option>
-                  </optgroup>
-                  <optgroup label="3. Sản xuất, vận tải, XD có bao thầu (4.5%)">
-                    <option value="san_xuat_gia_cong">Sản xuất, gia công hàng hóa</option>
-                    <option value="van_tai_hang_hoa_hanh_khach">Vận tải hàng hóa, vận tải hành khách</option>
-                    <option value="xay_dung_co_bao_thau">Xây dựng, lắp đặt có bao thầu nguyên vật liệu</option>
-                    <option value="san_xuat_van_tai_dich_vu_co_hang_hoa">Sản xuất, vận tải, dịch vụ có gắn hàng hóa khác</option>
-                  </optgroup>
-                  <optgroup label="4. Hoạt động kinh doanh khác (3%)">
-                    <option value="khai_thac_khoang_san">Khai thác tài nguyên, khoáng sản</option>
-                    <option value="san_xuat_ttdb">Sản xuất hàng chịu thuế Tiêu thụ đặc biệt</option>
-                    <option value="hoat_dong_khac">Hoạt động kinh doanh khác</option>
-                  </optgroup>
-                </select>
-              </div>
-              <button type="submit" className="secondary-button">
-                Tính Thuế & Tư Vấn
-              </button>
-            </form>
-          </div>
-
-          {taxData && (
-            <div className="card result-card" style={{ display: "block" }}>
-              <h3>Kết quả Tính Thuế</h3>
-              <div>
-                {!taxData.is_taxable ? (
-                  <>
-                    <div className="tax-item">
-                      <span>Trạng thái:</span>
-                      <strong>Được miễn thuế</strong>
-                    </div>
-                    <div className="tax-item">
-                      <span>Lý do:</span>
-                      <span>{taxData.reason}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="tax-item">
-                      <span>Doanh thu:</span>
-                      <strong>{formatVND(taxData.revenue || 0)}</strong>
-                    </div>
-                    <div className="tax-item">
-                      <span>Doanh thu tính thuế (vượt 500tr):</span>
-                      <strong>{formatVND((taxData as any).taxable_revenue || 0)}</strong>
-                    </div>
-                    <div className="tax-item">
-                      <span>Thuế GTGT:</span>
-                      <span>{formatVND(taxData.tax_gtgt || 0)}</span>
-                    </div>
-                    <div className="tax-item">
-                      <span>Thuế TNCN:</span>
-                      <span>{formatVND(taxData.tax_tncn || 0)}</span>
-                    </div>
-                    <div className="tax-item tax-total">
-                      <span>Tổng thuế phải nộp:</span>
-                      <span>{formatVND(taxData.total_tax || 0)}</span>
-                    </div>
-                    <div style={{ marginTop: "10px", fontSize: "0.85rem", color: "#166534" }}>
-                      {taxData.explanation}
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
         </div>
       </main>
     </div>
