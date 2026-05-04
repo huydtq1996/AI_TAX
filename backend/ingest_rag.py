@@ -24,10 +24,11 @@ def embed_text(text, title=None):
     """Biến đổi văn bản thành Vector đa ngôn ngữ (768 chiều)"""
     try:
         kwargs = {
-            "model": "gemini-embedding-2",
+            "model": "text-embedding-004",
             "contents": text,
             "config": types.EmbedContentConfig(
-                task_type="RETRIEVAL_DOCUMENT"
+                task_type="RETRIEVAL_DOCUMENT",
+                output_dimensionality=768
             )
         }
         if title:
@@ -123,7 +124,7 @@ def process_pdf(pdf_path):
     print(f"📄 Đang tải file PDF [{pdf_path}] lên Google Cloud AI...")
     try:
         # File API của Gemini xử lý PDF native cực mạnh mà không cần dùng PyPDF2
-        uploaded_file = genai.upload_file(pdf_path)
+        uploaded_file = client.files.upload(file=pdf_path)
         print("Đã tải lên hệ thống Gemini. Sẵn sàng xử lý!")
         return [uploaded_file]
     except Exception as e:

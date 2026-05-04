@@ -51,10 +51,11 @@ class GeminiService:
             return None
         try:
             result = self.client.models.embed_content(
-                model="gemini-embedding-2",
+                model="text-embedding-004",
                 contents=text,
                 config=types.EmbedContentConfig(
-                    task_type="RETRIEVAL_QUERY"
+                    task_type="RETRIEVAL_QUERY",
+                    output_dimensionality=768
                 )
             )
             return result.embeddings[0].values
