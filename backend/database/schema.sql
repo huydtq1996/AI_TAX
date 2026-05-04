@@ -6,7 +6,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- ==============================================================================
 CREATE TABLE chat_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE, -- Liên kết với hệ thống Auth của Supabase
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(), -- Tự động gán bằng ID của người dùng gọi API
     title TEXT NOT NULL DEFAULT 'Cuộc trò chuyện mới',        -- Tên cuộc trò chuyện (AI có thể tự tạo tên dựa vào câu hỏi đầu tiên)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -104,6 +104,10 @@ WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own chat sessions"
 ON chat_sessions FOR UPDATE
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own chat sessions"
+ON chat_sessions FOR DELETE
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view messages in their sessions"

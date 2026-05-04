@@ -30,6 +30,7 @@ export default function Home() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [revenue, setRevenue] = useState("");
+  const [displayRevenue, setDisplayRevenue] = useState("");
   const [category, setCategory] = useState("hoat_dong_khac");
   const [taxData, setTaxData] = useState<TaxData | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -101,6 +102,26 @@ export default function Home() {
     setCurrentSessionId(null);
     setMessages([{ id: "1", text: "Xin chào! Bạn cần tư vấn về vấn đề gì?", isUser: false }]);
     setTaxData(null);
+  };
+
+  const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
+    e.stopPropagation();
+    if (!window.confirm('Bạn có chắc chắn muốn xóa cuộc trò chuyện này?')) return;
+    
+    // Xóa từ Database
+    await supabase.from('chat_sessions').delete().eq('id', sessionId);
+    
+    // Xóa khỏi UI
+    const newSessions = chatSessions.filter(s => s.id !== sessionId);
+    setChatSessions(newSessions);
+    
+    if (currentSessionId === sessionId) {
+      if (newSessions.length > 0) {
+        loadSession(newSessions[0].id);
+      } else {
+        createNewSession();
+      }
+    }
   };
 
   useEffect(() => {
@@ -264,7 +285,7 @@ export default function Home() {
   };
 
   return (
-    <div className="layout" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+    <div className="layout" style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
       {/* SIDEBAR TƯƠNG TỰ GEMINI */}
       <div className="sidebar" style={{ width: '280px', backgroundColor: '#f0f4f9', padding: '15px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0', overflowY: 'hidden' }}>
         <button
@@ -277,11 +298,17 @@ export default function Home() {
           <h4 style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', marginBottom: '10px', marginLeft: '5px' }}>Lịch sử trò chuyện</h4>
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
             {chatSessions.map((session) => (
-              <li key={session.id}>
+              <li key={session.id} style={{ display: 'flex', alignItems: 'center', backgroundColor: currentSessionId === session.id ? '#d3e3fd' : 'transparent', borderRadius: '8px' }}>
                 <button
                   onClick={() => loadSession(session.id)}
-                  style={{ width: '100%', textAlign: 'left', padding: '12px 10px', border: 'none', borderRadius: '8px', backgroundColor: currentSessionId === session.id ? '#d3e3fd' : 'transparent', color: currentSessionId === session.id ? '#041e49' : '#444', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
+                  style={{ flex: 1, textAlign: 'left', padding: '12px 10px', border: 'none', backgroundColor: 'transparent', color: currentSessionId === session.id ? '#041e49' : '#444', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
                   <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title}
+                </button>
+                <button 
+                  onClick={(e) => deleteSession(e, session.id)}
+                  title="Xóa cuộc trò chuyện"
+                  style={{ padding: '8px', border: 'none', backgroundColor: 'transparent', color: '#888', cursor: 'pointer', borderRadius: '50%' }}>
+                  <i className="fa-solid fa-trash-can"></i>
                 </button>
               </li>
             ))}
@@ -374,10 +401,24 @@ export default function Home() {
                 <div className="form-group">
                   <label>Doanh thu năm (VNĐ):</label>
                   <input
-                    type="number"
-                    value={revenue}
-                    onChange={(e) => setRevenue(e.target.value)}
-                    placeholder="VD: 600000000"
+                    type="text"
+                    value={displayRevenue}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "");
+                      setRevenue(raw);
+                      setDisplayRevenue(raw.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+                    }}
+                    onBlur={() => {
+                      if (revenue) {
+                        setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
+                      }
+                    }}
+                    onFocus={() => {
+                      if (revenue) {
+                        setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+                      }
+                    }}
+                    placeholder="VD: 600.000.000,00"
                     required
                   />
                 </div>
