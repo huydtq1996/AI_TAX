@@ -1,0 +1,5 @@
+python ingest_rag.py --pdf "D:\Softwares\AI_TAX\documents\68_2026_ND-CP.pdf"
+python ingest_rag.py --pdf "D:\Softwares\AI_TAX\documents\141_2026_ND-CP.pdf"
+python ingest_rag.py --pdf "D:\Softwares\AI_TAX\documents\684668.pdf"
+python ingest_rag.py --pdf "D:\Softwares\AI_TAX\documents\luat48.pdf"
+python ingest_rag.py --pdf "D:\Softwares\AI_TAX\documents\Thong-tu-18-2026-TT-BTC.pdf"
