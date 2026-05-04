@@ -1,6 +1,6 @@
 import os
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify, render_template
+from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 from services.gemini_service import GeminiService
@@ -11,7 +11,7 @@ from services.guard_service import GuardService
 # Load environment variables
 load_dotenv()
 
-app = Flask(__name__, template_folder='templates', static_folder='static')
+app = Flask(__name__)
 CORS(app)
 
 # Initialize services
@@ -19,10 +19,6 @@ gemini_service = GeminiService()
 supabase_service = SupabaseService()
 tax_calculator = TaxCalculator()
 guard_service = GuardService()
-
-@app.route('/')
-def index():
-    return render_template('index.html')
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
