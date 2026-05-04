@@ -130,10 +130,21 @@ export default function Home() {
   const onTaxSubmit = (e: FormEvent) => {
     e.preventDefault();
     const categories: any = {
-      phan_phoi_cung_cap_hang_hoa: "Phân phối, cung cấp hàng hóa",
-      dich_vu_xay_dung_khong_bao_thau: "Dịch vụ, xây dựng không bao thầu",
-      san_xuat_van_tai_dich_vu_co_hang_hoa: "Sản xuất, vận tải, dịch vụ có gắn hàng hóa",
-      hoat_dong_khac: "Hoạt động khác"
+      ban_buon_ban_le: "Bán buôn, bán lẻ hàng hóa (tạp hóa, siêu thị mini, v.v.)",
+      ban_le_thuoc_my_pham: "Bán lẻ thuốc, dụng cụ y tế, mỹ phẩm",
+      phan_phoi_cung_cap_hang_hoa: "Phân phối, cung cấp hàng hóa khác",
+      nha_hang_quan_an_cafe: "Dịch vụ lưu trú, nhà hàng, quán ăn, quán cafe",
+      dich_vu_lam_dep_spa: "Dịch vụ làm đẹp, cắt tóc, gội đầu, spa, massage",
+      dich_vu_sua_chua: "Dịch vụ sửa chữa (máy tính, đồ gia dụng, xe máy)",
+      dich_vu_tu_van: "Dịch vụ tư vấn, thiết kế, pháp luật, kế toán",
+      xay_dung_khong_bao_thau: "Xây dựng, lắp đặt không bao thầu nguyên vật liệu",
+      san_xuat_gia_cong: "Sản xuất, gia công hàng hóa",
+      van_tai_hang_hoa_hanh_khach: "Vận tải hàng hóa, vận tải hành khách",
+      xay_dung_co_bao_thau: "Xây dựng, lắp đặt có bao thầu nguyên vật liệu",
+      san_xuat_van_tai_dich_vu_co_hang_hoa: "Sản xuất, vận tải, dịch vụ có gắn hàng hóa khác",
+      khai_thac_khoang_san: "Khai thác tài nguyên, khoáng sản",
+      san_xuat_ttdb: "Sản xuất hàng chịu thuế Tiêu thụ đặc biệt",
+      hoat_dong_khac: "Hoạt động kinh doanh khác"
     };
     
     const catText = categories[category];
@@ -243,16 +254,29 @@ export default function Home() {
               <div className="form-group">
                 <label>Ngành nghề:</label>
                 <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="phan_phoi_cung_cap_hang_hoa">
-                    Phân phối, cung cấp hàng hóa
-                  </option>
-                  <option value="dich_vu_xay_dung_khong_bao_thau">
-                    Dịch vụ, xây dựng không bao thầu
-                  </option>
-                  <option value="san_xuat_van_tai_dich_vu_co_hang_hoa">
-                    Sản xuất, vận tải, dịch vụ có gắn hàng hóa
-                  </option>
-                  <option value="hoat_dong_khac">Hoạt động khác</option>
+                  <optgroup label="1. Phân phối, cung cấp hàng hóa (1.5%)">
+                    <option value="ban_buon_ban_le">Bán buôn, bán lẻ hàng hóa (tạp hóa, siêu thị mini...)</option>
+                    <option value="ban_le_thuoc_my_pham">Bán lẻ thuốc, dụng cụ y tế, mỹ phẩm</option>
+                    <option value="phan_phoi_cung_cap_hang_hoa">Phân phối, cung cấp hàng hóa khác</option>
+                  </optgroup>
+                  <optgroup label="2. Dịch vụ, XD không bao thầu (7%)">
+                    <option value="nha_hang_quan_an_cafe">Dịch vụ lưu trú, nhà hàng, quán ăn, quán cafe</option>
+                    <option value="dich_vu_lam_dep_spa">Dịch vụ làm đẹp, cắt tóc, gội đầu, spa, massage</option>
+                    <option value="dich_vu_sua_chua">Dịch vụ sửa chữa (máy tính, đồ gia dụng, xe máy)</option>
+                    <option value="dich_vu_tu_van">Dịch vụ tư vấn, thiết kế, pháp luật, kế toán</option>
+                    <option value="xay_dung_khong_bao_thau">Xây dựng, lắp đặt không bao thầu nguyên vật liệu</option>
+                  </optgroup>
+                  <optgroup label="3. Sản xuất, vận tải, XD có bao thầu (4.5%)">
+                    <option value="san_xuat_gia_cong">Sản xuất, gia công hàng hóa</option>
+                    <option value="van_tai_hang_hoa_hanh_khach">Vận tải hàng hóa, vận tải hành khách</option>
+                    <option value="xay_dung_co_bao_thau">Xây dựng, lắp đặt có bao thầu nguyên vật liệu</option>
+                    <option value="san_xuat_van_tai_dich_vu_co_hang_hoa">Sản xuất, vận tải, dịch vụ có gắn hàng hóa khác</option>
+                  </optgroup>
+                  <optgroup label="4. Hoạt động kinh doanh khác (3%)">
+                    <option value="khai_thac_khoang_san">Khai thác tài nguyên, khoáng sản</option>
+                    <option value="san_xuat_ttdb">Sản xuất hàng chịu thuế Tiêu thụ đặc biệt</option>
+                    <option value="hoat_dong_khac">Hoạt động kinh doanh khác</option>
+                  </optgroup>
                 </select>
               </div>
               <button type="submit" className="secondary-button">
