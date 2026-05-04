@@ -41,3 +41,17 @@ class GeminiService:
             return response.text
         except Exception as e:
             return f"Lỗi khi gọi Gemini API: {str(e)}"
+            
+    def embed_text(self, text):
+        if not self.model or not text:
+            return None
+        try:
+            result = genai.embed_content(
+                model="models/text-multilingual-embedding-002",
+                content=text,
+                task_type="retrieval_query"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"Lỗi khi nhúng văn bản: {str(e)}")
+            return None

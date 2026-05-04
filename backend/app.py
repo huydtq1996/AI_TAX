@@ -32,6 +32,9 @@ def chat():
     revenue = float(revenue_str) if revenue_str else 0
     category = request.form.get('category', 'hoat_dong_khac')
     
+    user_token = request.form.get('supabase_token')
+    session_id = request.form.get('session_id')
+    
     file = request.files.get('file')
     
     if not user_message and not file:
@@ -43,9 +46,19 @@ def chat():
             "error": "Câu hỏi của bạn chứa nội dung không hợp lệ hoặc vi phạm chính sách."
         }), 403
         
+    # Tạo Session nếu chưa có
+    if user_token and not session_id:
+        title = user_message[:40] + "..." if user_message else "Kế hoạch Thuế"
+        session_id = supabase_service.create_session(title, user_token)
+        
+    # Lưu tin nhắn của User
+    if user_token and session_id:
+        supabase_service.save_message(session_id, 'user', user_message, user_token)
+        
     # 2. RAG - Lấy ngữ cảnh luật thuế
-    # Trong thực tế, bạn sẽ embedding user_message và search trong Supabase
-    legal_context = supabase_service.search_tax_laws(None)
+    # Chuyển đổi câu hỏi của user thành Vector
+    query_vector = gemini_service.embed_text(user_message)
+    legal_context = supabase_service.search_tax_laws(query_vector)
     
     # 3. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
     tax_result = None
@@ -66,10 +79,15 @@ def chat():
     # Dọn dẹp file tạm
     if file_path and os.path.exists(file_path):
         os.remove(file_path)
+        
+    # Lưu tin nhắn của AI
+    if user_token and session_id:
+        supabase_service.save_message(session_id, 'assistant', ai_response, user_token, tax_snapshot=tax_result)
     
     response = {
         "text": ai_response,
         "tax_table": tax_result,
+        "session_id": session_id,
         "sources": ["Luật Thuế GTGT 2024","Nghị định 141/2026/NĐ-CP","Nghị định 68/2026/NĐ-CP","Thông tư 18/2026/TT-BTC","Nghị định 117/2025/NĐ-CP"] if legal_context else []
     }
     

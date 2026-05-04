@@ -9,13 +9,52 @@ class SupabaseService:
             print("Warning: SUPABASE_URL or SUPABASE_ANON_KEY is not set.")
 
     def search_tax_laws(self, query_vector):
-        # Giả lập tìm kiếm RAG từ Supabase pgvector
-        if not self.url or not self.key:
-            return "Chưa kết nối Supabase."
+        if not self.url or not self.key or not query_vector:
+            return "Chưa kết nối Supabase hoặc thiếu Vector."
         
-        # Nếu muốn gọi RPC thật qua REST API:
-        # headers = {"apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
-        # response = requests.post(f"{self.url}/rest/v1/rpc/match_tax_laws", headers=headers, json={'query_embedding': query_vector, 'match_threshold': 0.7, 'match_count': 3})
-        # return response.json()
+        headers = {"apikey": self.key, "Authorization": f"Bearer {self.key}", "Content-Type": "application/json"}
+        response = requests.post(
+            f"{self.url}/rest/v1/rpc/match_tax_documents", 
+            headers=headers, 
+            json={'query_embedding': query_vector, 'match_threshold': 0.6, 'match_count': 3}
+        )
         
-        return "Thông tư 40/2021/TT-BTC: Hộ kinh doanh có doanh thu trên 100 triệu/năm mới phải nộp thuế GTGT và TNCN."
+        if response.status_code == 200:
+            results = response.json()
+            if results and len(results) > 0:
+                context = ""
+                for idx, row in enumerate(results):
+                    context += f"[{idx+1}] {row['title']}: {row['content']}\n"
+                return context
+        
+        return "Không tìm thấy luật thuế liên quan trong cơ sở tri thức."
+
+    def create_session(self, title, token):
+        if not self.url or not self.key or not token: return None
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {token}", 
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
+        res = requests.post(f"{self.url}/rest/v1/chat_sessions", headers=headers, json={"title": title})
+        if res.status_code in [200, 201]:
+            return res.json()[0]["id"]
+        return None
+
+    def save_message(self, session_id, role, content, token, tax_snapshot=None):
+        if not self.url or not self.key or not token: return
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {token}", 
+            "Content-Type": "application/json"
+        }
+        data = {
+            "session_id": session_id,
+            "role": role,
+            "content": content
+        }
+        if tax_snapshot:
+            data["tax_result_snapshot"] = tax_snapshot
+            
+        requests.post(f"{self.url}/rest/v1/chat_messages", headers=headers, json=data)

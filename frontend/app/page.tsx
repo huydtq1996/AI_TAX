@@ -29,13 +29,76 @@ export default function Home() {
   ]);
   const [inputMessage, setInputMessage] = useState("");
   const [revenue, setRevenue] = useState("");
-  const [category, setCategory] = useState("hoat_dong_khac");
-  const [taxData, setTaxData] = useState<TaxData | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [userToken, setUserToken] = useState<string | null>(null);
+  const [chatSessions, setChatSessions] = useState<any[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Đăng nhập ẩn danh và tải danh sách chat
+  useEffect(() => {
+    const initAuth = async () => {
+      let token = null;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        token = session.access_token;
+      } else {
+        const { data } = await supabase.auth.signInAnonymously();
+        if (data?.session) token = data.session.access_token;
+      }
+      
+      setUserToken(token);
+      
+      // Load lịch sử chat
+      const { data: sessions } = await supabase
+        .from('chat_sessions')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (sessions && sessions.length > 0) {
+        setChatSessions(sessions);
+        loadSession(sessions[0].id); // Tự động load phiên gần nhất
+      } else {
+        setMessages([{ id: "1", text: "Xin chào! Tôi là AI Trợ lý Thuế. Hãy cung cấp doanh thu và ngành nghề, hoặc đính kèm ảnh tờ khai/hóa đơn để tôi tư vấn.", isUser: false }]);
+      }
+    };
+    initAuth();
+  }, []);
+
+  // Tải nội dung của 1 phiên chat cụ thể
+  const loadSession = async (sessionId: string) => {
+    setCurrentSessionId(sessionId);
+    const { data: msgs } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('created_at', { ascending: true });
+      
+    if (msgs && msgs.length > 0) {
+      setMessages(msgs.map((m: any) => ({
+        id: m.id,
+        text: m.content,
+        isUser: m.role === 'user'
+      })));
+      
+      // Nếu có bảng tính thuế từ tin nhắn cuối cùng, hiển thị lại
+      const lastBotMsg = msgs.reverse().find((m: any) => m.role === 'assistant' && m.tax_result_snapshot);
+      if (lastBotMsg) setTaxData(lastBotMsg.tax_result_snapshot);
+      else setTaxData(null);
+    } else {
+      setMessages([{ id: "1", text: "Xin chào! Hãy bắt đầu hỏi đáp về thuế.", isUser: false }]);
+    }
+  };
+
+  const createNewSession = () => {
+    setCurrentSessionId(null);
+    setMessages([{ id: "1", text: "Xin chào! Bạn cần tư vấn về vấn đề gì?", isUser: false }]);
+    setTaxData(null);
+  };
 
   useEffect(() => {
     if (chatWindowRef.current) {
@@ -89,9 +152,9 @@ export default function Home() {
     formData.append("message", text);
     formData.append("revenue", forceRevenue.toString() || "0");
     formData.append("category", forceCat || "hoat_dong_khac");
-    if (selectedFile) {
-      formData.append("file", selectedFile);
-    }
+    if (selectedFile) formData.append("file", selectedFile);
+    if (userToken) formData.append("supabase_token", userToken);
+    if (currentSessionId) formData.append("session_id", currentSessionId);
 
     try {
       const response = await fetch("http://localhost:5000/api/chat", {
@@ -102,7 +165,16 @@ export default function Home() {
       const data = await response.json();
 
       setMessages((prev) => prev.filter((m) => m.id !== typingId));
-      setSelectedFile(null); // Clear file sau khi gửi
+      setSelectedFile(null);
+
+      // Cập nhật session_id nếu backend tạo mới
+      if (data.session_id && data.session_id !== currentSessionId) {
+        setCurrentSessionId(data.session_id);
+        // Refresh danh sách bên trái (giả lập)
+        if (!chatSessions.find(s => s.id === data.session_id)) {
+           setChatSessions([{id: data.session_id, title: text.substring(0, 30) + '...'}, ...chatSessions]);
+        }
+      }
 
       if (data.error) {
         setMessages((prev) => [
@@ -189,18 +261,42 @@ export default function Home() {
   };
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <div className="header-content">
-          <h1>
-            <i className="fa-solid fa-robot"></i> AI Trợ lý Khai báo Thuế
-          </h1>
-          <p>Dành cho Hộ Kinh doanh Nhỏ - Tư duy Trí tuệ Nhân tạo</p>
+    <div className="layout" style={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      {/* SIDEBAR TƯƠNG TỰ GEMINI */}
+      <div className="sidebar" style={{ width: '280px', backgroundColor: '#f0f4f9', padding: '15px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0', overflowY: 'hidden' }}>
+        <button 
+          onClick={createNewSession}
+          style={{ backgroundColor: '#fff', border: 'none', borderRadius: '20px', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '14px' }}>
+          <i className="fa-solid fa-plus"></i> Cuộc trò chuyện mới
+        </button>
+        
+        <div style={{ marginTop: '20px', flex: 1, overflowY: 'auto' }}>
+          <h4 style={{ fontSize: '12px', color: '#666', textTransform: 'uppercase', marginBottom: '10px', marginLeft: '5px' }}>Lịch sử trò chuyện</h4>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+            {chatSessions.map((session) => (
+              <li key={session.id}>
+                <button 
+                  onClick={() => loadSession(session.id)}
+                  style={{ width: '100%', textAlign: 'left', padding: '12px 10px', border: 'none', borderRadius: '8px', backgroundColor: currentSessionId === session.id ? '#d3e3fd' : 'transparent', color: currentSessionId === session.id ? '#041e49' : '#444', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
+                  <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
-      </header>
+      </div>
 
-      <main className="main-content">
-        <div className="chat-section">
+      <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <header className="app-header" style={{ padding: '15px 30px', backgroundColor: '#fff', borderBottom: '1px solid #eee' }}>
+          <div className="header-content">
+            <h1 style={{ fontSize: '1.2rem', margin: 0 }}>
+              <i className="fa-solid fa-robot"></i> AI Trợ lý Khai báo Thuế
+            </h1>
+          </div>
+        </header>
+
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          <div className="chat-section" style={{ flex: 1 }}>
           <div className="chat-window" ref={chatWindowRef}>
             {messages.map((msg) => (
               <div
@@ -361,6 +457,7 @@ export default function Home() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </main>
     </div>
