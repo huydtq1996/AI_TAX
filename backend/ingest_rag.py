@@ -76,7 +76,8 @@ def extract_and_chunk_with_gemini(content_parts):
       {
         "title": "Tên văn bản hoặc Chương (VD: Thông tư 40/2021)",
         "content": "Nội dung chi tiết của điều luật hoặc quy định...",
-        "metadata": {"topic": "từ_khóa_1, từ_khóa_2"}
+        "metadata": {"topic": "từ_khóa_1, từ_khóa_2"},
+        "issue_date": "2025-11-26" // BẮT BUỘC CHUYỂN ĐỔI mọi định dạng ngày (như "ngày 26 tháng 11 năm 2025" hay "26/11/2025") sang chuẩn YYYY-MM-DD. Nếu không rõ thì để null
       }
     ]
     """
@@ -87,7 +88,10 @@ def extract_and_chunk_with_gemini(content_parts):
         
         response = client.models.generate_content(
             model=model_name,
-            contents=parts
+            contents=parts,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json"
+            )
         )
         
         # Xử lý text để chắc chắn là JSON hợp lệ
@@ -183,6 +187,7 @@ def main():
                 "title": item.get("title", "Tài liệu luật"),
                 "content": item.get("content", ""),
                 "metadata": item.get("metadata", {}),
+                "issue_date": item.get("issue_date", None),
                 "embedding": vector
             }
             insert_to_supabase(row)

@@ -24,7 +24,10 @@ class SupabaseService:
             if results and len(results) > 0:
                 context = ""
                 for idx, row in enumerate(results):
-                    context += f"[{idx+1}] {row['title']}: {row['content']}\n"
+                    title = row.get('title', 'Quy định thuế')
+                    issue_date = row.get('issue_date')
+                    date_str = f" (Ngày ban hành: {issue_date})" if issue_date else ""
+                    context += f"[{idx+1}] {title}{date_str}: {row.get('content', '')}\n"
                 return context
         
         return "Không tìm thấy luật thuế liên quan trong cơ sở tri thức."

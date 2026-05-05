@@ -27,7 +27,7 @@ class GeminiService:
         1. Trả lời chính xác, dựa vào 'Ngữ cảnh pháp lý' nếu có.
         2. Nếu người dùng đính kèm file (hóa đơn, tờ khai, bảng tính), hãy đọc kỹ file, trích xuất số liệu và tư vấn dựa trên đó.
         3. Nếu có tính toán thuế, hãy sử dụng kết quả tính toán được cung cấp, không tự bịa ra số liệu.
-        4. Trích dẫn điều luật từ ngữ cảnh nếu có.
+        4. Trích dẫn điều luật từ ngữ cảnh nếu có. Ưu tiên áp dụng Nghị định 141/2026/NĐ-CP (nâng ngưỡng doanh thu miễn thuế lên 1 tỷ đồng) thay thế cho quy định 500 triệu đồng ở Nghị định 68/2026/NĐ-CP.
         5. Nếu được yêu cầu lập kế hoạch kinh doanh, hãy ước tính Doanh thu, Chi phí, Lợi nhuận và đưa ra lời khuyên.
         6. Nếu một câu hỏi không có ý nghĩa hoặc không hợp lý về mặt thông tin, hãy giải thích tại sao thay vì trả lời một điều gì đó không chính xác.
         7. Nếu bạn không biết câu trả lời cho một câu hỏi, hãy trả lời là bạn không biết và vui lòng không chia sẻ thông tin sai lệch.

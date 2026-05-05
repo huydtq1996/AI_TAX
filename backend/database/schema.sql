@@ -40,6 +40,7 @@ CREATE TABLE tax_documents (
     title TEXT,                            -- Tên nghị định, thông tư (Ví dụ: Thông tư 40/2021)
     content TEXT NOT NULL,                 -- Nội dung chi tiết của điều luật (Chunk)
     metadata JSONB,                        -- Thông tin thêm (Chương, mục, điều mấy...)
+    issue_date DATE,                       -- Ngày ban hành để ưu tiên luật mới nhất
     embedding vector(768) NOT NULL,        -- Dữ liệu số (Vector) sinh ra từ Google Gemini Embedding API
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -57,8 +58,10 @@ CREATE OR REPLACE FUNCTION match_tax_documents (
 )
 RETURNS TABLE (
   id uuid,
+  title text,
   content text,
   metadata jsonb,
+  issue_date date,
   similarity float
 )
 LANGUAGE plpgsql
@@ -68,12 +71,16 @@ BEGIN
   RETURN QUERY
   SELECT
     tax_documents.id,
+    tax_documents.title,
     tax_documents.content,
     tax_documents.metadata,
+    tax_documents.issue_date,
     1 - (tax_documents.embedding <=> query_embedding) AS similarity
   FROM tax_documents
   WHERE 1 - (tax_documents.embedding <=> query_embedding) > match_threshold
-  ORDER BY tax_documents.embedding <=> query_embedding
+  ORDER BY 
+    tax_documents.embedding <=> query_embedding ASC, 
+    tax_documents.issue_date DESC NULLS LAST
   LIMIT match_count;
 END;
 $$;
