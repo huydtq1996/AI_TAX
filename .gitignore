@@ -15,4 +15,4 @@ frontend/.env.local
 Thumbs.db
 
 # Documents
-documents/*
+documents/
