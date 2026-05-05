@@ -1,6 +1,12 @@
 import os
+import sys
+import io
 from google import genai
 from dotenv import load_dotenv
+
+# Đảm bảo stdout hỗ trợ UTF-8 để in tiếng Việt và emoji trên Windows
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 load_dotenv()
 api_key = os.getenv("GEMINI_API_KEY")

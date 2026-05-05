@@ -4,9 +4,14 @@ import json
 import argparse
 import requests
 import re
+import io
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
+
+# Đảm bảo stdout hỗ trợ UTF-8 để in tiếng Việt và emoji trên Windows
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
 # Tải các biến môi trường
 load_dotenv()
@@ -24,7 +29,7 @@ def embed_text(text, title=None):
     """Biến đổi văn bản thành Vector đa ngôn ngữ (768 chiều)"""
     try:
         kwargs = {
-            "model": "text-embedding-004",
+            "model": "gemini-embedding-2",
             "contents": text,
             "config": types.EmbedContentConfig(
                 task_type="RETRIEVAL_DOCUMENT",
@@ -58,11 +63,12 @@ def insert_to_supabase(data):
 # ==========================================
 def extract_and_chunk_with_gemini(content_parts):
     print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu (Auto-Chunking)...")
-    model_name = "gemini-2.5-flash"
+    model_name = "gemini-flash-latest"
     
     prompt = """
     Bạn là một chuyên gia Pháp lý và Thuế. Hãy đọc tài liệu đính kèm và trích xuất các điều luật, quy định quan trọng.
-    Chia tài liệu thành các đoạn (chunk) nhỏ có ý nghĩa (khoảng 100-300 chữ mỗi đoạn) để làm dữ liệu tìm kiếm Vector.
+    Chia tài liệu thành các đoạn (chunk) nhỏ có ý nghĩa (khoảng 100-200 chữ mỗi đoạn) để làm dữ liệu tìm kiếm Vector.
+    Để đảm bảo không mất ngữ cảnh khi RAG truy xuất, hãy gối đầu (lặp lại) nội dung hoặc bối cảnh quan trọng ở cuối đoạn trước vào đầu đoạn sau (tương đương khoảng 50 ký tự).
     Tuyệt đối loại bỏ các thông tin rác, mục lục, lời mở đầu. Chỉ giữ nội dung cốt lõi của luật.
     
     YÊU CẦU: CHỈ TRẢ VỀ ĐÚNG MỘT MẢNG JSON, không kèm bất kỳ đoạn hội thoại, không bọc bằng markdown, bắt đầu bằng '[' và kết thúc bằng ']'. Format chuẩn:
