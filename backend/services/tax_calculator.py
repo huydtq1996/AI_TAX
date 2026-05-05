@@ -82,5 +82,5 @@ class TaxCalculator:
             "tax_gtgt": tax_gtgt,
             "tax_tncn": tax_tncn,
             "total_tax": tax_gtgt + tax_tncn,
-            "explanation": f"Ngành nghề: {cat_name}. Doanh thu {revenue:,.0f} VNĐ. Thuế GTGT tính trên toàn bộ doanh thu (Tỷ lệ: {rate['gtgt']*100}%). Thuế TNCN tính trên phần vượt 1 tỷ (tức là {taxable_revenue_tncn:,.0f} VNĐ, Tỷ lệ: {rate['tncn']*100}%)."
+            "explanation": f"- Ngành nghề: {cat_name}\n- Doanh thu {revenue:,.0f} VNĐ\n  • Thuế GTGT tính trên toàn bộ doanh thu (Tỷ lệ: {rate['gtgt']*100}%).\n  • Thuế TNCN tính trên phần vượt 1 tỷ (tức là {taxable_revenue_tncn:,.0f} VNĐ, Tỷ lệ: {rate['tncn']*100}%)."
         }

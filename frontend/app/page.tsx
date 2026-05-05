@@ -478,8 +478,12 @@ export default function Home() {
                         <strong>{formatVND(taxData.revenue || 0)}</strong>
                       </div>
                       <div className="tax-item">
-                        <span>Doanh thu tính thuế (vượt 500tr):</span>
-                        <strong>{formatVND((taxData as any).taxable_revenue || 0)}</strong>
+                        <span>DT tính thuế GTGT (toàn bộ):</span>
+                        <strong>{formatVND((taxData as any).taxable_revenue_gtgt || 0)}</strong>
+                      </div>
+                      <div className="tax-item">
+                        <span>DT tính thuế TNCN (vượt 1 tỷ):</span>
+                        <strong>{formatVND((taxData as any).taxable_revenue_tncn || 0)}</strong>
                       </div>
                       <div className="tax-item">
                         <span>Thuế GTGT:</span>
@@ -489,11 +493,22 @@ export default function Home() {
                         <span>Thuế TNCN:</span>
                         <span>{formatVND(taxData.tax_tncn || 0)}</span>
                       </div>
-                      <div className="tax-item tax-total">
-                        <span>Tổng thuế phải nộp:</span>
-                        <span>{formatVND(taxData.total_tax || 0)}</span>
+                      <div className="tax-item tax-total" style={{ marginTop: "15px", paddingTop: "12px", borderTop: "2px dashed #bbf7d0", alignItems: "center" }}>
+                        <span style={{ fontSize: "1.1rem", fontWeight: "bold" }}>Tổng thuế phải nộp:</span>
+                        <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#15803d" }}>{formatVND(taxData.total_tax || 0)}</span>
                       </div>
-                      <div style={{ marginTop: "10px", fontSize: "0.85rem", color: "#166534" }}>
+                      <div style={{ 
+                        marginTop: "15px", 
+                        padding: "12px", 
+                        backgroundColor: "#f0fdf4", 
+                        border: "1px solid #bbf7d0", 
+                        borderRadius: "8px", 
+                        fontSize: "0.85rem", 
+                        color: "#166534",
+                        lineHeight: "1.6",
+                        whiteSpace: "pre-wrap"
+                      }}>
+                        <strong><i className="fa-solid fa-circle-info"></i> Giải thích:</strong><br/>
                         {taxData.explanation}
                       </div>
                     </>
