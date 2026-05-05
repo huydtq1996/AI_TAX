@@ -9,6 +9,7 @@ frontend/.next/
 frontend/out/
 frontend/.env
 frontend/.env.local
+frontend/*.tsbuildinfo
 
 # OS Files
 .DS_Store
@@ -16,3 +17,14 @@ Thumbs.db
 
 # Documents
 documents/
+
+# Temporary and Scratch files
+*.json
+!package.json
+!package-lock.json
+*.py
+!backend/*.py
+!backend/services/*.py
+scratch_*.py
+test_*.py
+docs.json

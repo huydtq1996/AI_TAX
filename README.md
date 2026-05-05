@@ -3,52 +3,61 @@
 Dự án được xây dựng dựa trên sơ đồ quy trình, sử dụng AI (Gemini 2.0 Flash) và RAG, kết hợp với công thức tính thuế cứng để đảm bảo tính minh bạch, công bằng và đáng tin cậy cho Hộ kinh doanh.
 
 ## Tính năng
-- Tra cứu luật thuế (RAG mô phỏng với Supabase)
+- Tra cứu luật thuế (RAG với Supabase Vector DB)
 - Tính thuế Hộ Kinh Doanh (công thức cứng theo thông tư 40/2021/TT-BTC)
-- Tư vấn thuế tự động qua Chat (Gemini)
+- Tư vấn thuế tự động qua Chat (Gemini 2.0 Flash)
 - Chống Prompt Injection (Guard Service)
 - Hỗ trợ nhập liệu bằng giọng nói (Voice Input)
+- Giao diện hiện đại với Next.js & Tailwind CSS
 
-## Cấu trúc
+## Cấu trúc Dự án
 ```
 AI_TAX/
-├── backend/
-│   ├── app.py                # Server Flask chính
-│   ├── requirements.txt      # Các thư viện Python cần thiết
-│   ├── .env.example          # File mẫu cấu hình API keys
-│   ├── services/
-│   │   ├── gemini_service.py # Gọi Google Gemini API
-│   │   ├── supabase_service.py # Kết nối Supabase (Vector DB/RAG)
-│   │   ├── guard_service.py  # Kiểm duyệt prompt
-│   │   └── tax_calculator.py # Tính toán thuế bằng công thức cứng
-│   ├── templates/
-│   │   └── index.html        # Giao diện Frontend
-│   └── static/
-│       ├── style.css         # CSS làm đẹp giao diện
-│       └── script.js         # JavaScript xử lý Chat, Gọi API, Voice Input
+├── backend/              # Python Flask API
+│   ├── app.py            # Server chính
+│   ├── services/         # Logic xử lý (Gemini, Supabase, Tax)
+│   └── requirements.txt  # Dependencies của Python
+├── frontend/             # Next.js Application
+│   ├── app/              # Trang và Components
+│   ├── public/           # Assets tĩnh
+│   └── package.json      # Dependencies của Node.js
+├── documents/            # Tài liệu luật thuế (PDF)
+└── README.md             # Hướng dẫn này
 ```
 
-## Hướng dẫn cài đặt và chạy (Backend & Giao diện)
+## Hướng dẫn cài đặt và chạy
 
-1. Mở Terminal (Command Prompt hoặc PowerShell)
-2. Di chuyển vào thư mục backend:
+### 1. Chạy Backend (Python Flask)
+1. Mở Terminal và di chuyển vào thư mục backend:
    ```cmd
-   cd d:\Softwares\AI_TAX\backend
+   cd backend
    ```
-3. Cài đặt các thư viện Python:
+2. Cài đặt các thư viện:
    ```cmd
    pip install -r requirements.txt
    ```
-4. Đổi tên file `.env.example` thành `.env` và điền API keys của bạn:
-   - `GEMINI_API_KEY`: Key của Google AI Studio (Gemini)
-   - `SUPABASE_URL`: Đường dẫn Supabase Project
-   - `SUPABASE_ANON_KEY`: Key API của Supabase
-5. Chạy ứng dụng:
+3. Tạo file `.env` từ `.env.example` và điền API keys (Gemini, Supabase).
+4. Chạy server:
    ```cmd
    python app.py
    ```
-6. Mở trình duyệt web và truy cập: `http://localhost:5000`
+   *Backend sẽ chạy tại: http://localhost:5000*
 
-## Về Next.js (Lưu ý)
-Do máy bạn hiện chưa cài đặt Node.js (`npx` không hoạt động), mình đã triển khai Frontend bằng Vanilla HTML/JS/CSS siêu đẹp và mượt mà, được serve trực tiếp từ Flask để bạn có thể test ngay lập tức mà không cần cài thêm Node.js. 
-Khi bạn đã cài đặt Node.js, chúng ta có thể dễ dàng chuyển đổi frontend này sang Next.js bằng cách sử dụng các components của React.
+### 2. Chạy Frontend (Next.js)
+1. Mở một Terminal mới và di chuyển vào thư mục frontend:
+   ```cmd
+   cd frontend
+   ```
+2. Cài đặt dependencies (nếu chưa có Node.js thì cần cài đặt trước):
+   ```cmd
+   npm install
+   ```
+3. Chạy chế độ phát triển:
+   ```cmd
+   npm run dev
+   ```
+   *Frontend sẽ chạy tại: http://localhost:3000*
+
+## Lưu ý về Bảo mật
+- Không bao giờ commit file `.env` hoặc `.env.local` lên GitHub.
+- Các API Key phải được quản lý cẩn thận trong các biến môi trường.
