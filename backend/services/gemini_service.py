@@ -7,7 +7,7 @@ class GeminiService:
         api_key = os.getenv("GEMINI_API_KEY")
         if api_key:
             self.client = genai.Client(api_key=api_key)
-            self.model_name = 'gemini-2.5-flash'
+            self.model_name = 'gemini-flash-latest'
         else:
             self.client = None
             print("Warning: GEMINI_API_KEY is not set.")
@@ -53,7 +53,7 @@ class GeminiService:
             return None
         try:
             result = self.client.models.embed_content(
-                model="text-embedding-004",
+                model="gemini-embedding-2",
                 contents=text,
                 config=types.EmbedContentConfig(
                     task_type="RETRIEVAL_QUERY",
