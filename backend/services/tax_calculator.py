@@ -1,6 +1,6 @@
 class TaxCalculator:
     def __init__(self):
-        # Bảng tỷ lệ phần trăm thuế tính trên doanh thu (Theo TT 40/2021)
+        # Bảng tỷ lệ phần trăm thuế tính trên doanh thu (Theo Luật Thuế GTGT 48/2024/QH15 và Luật Thuế TNCN 109/2025/QH15)
         self.tax_rates = {
             # Nhóm 1: Phân phối, cung cấp hàng hóa (GTGT 1%, TNCN 0.5%)
             "ban_buon_ban_le": {"gtgt": 0.01, "tncn": 0.005},
@@ -47,13 +47,15 @@ class TaxCalculator:
     def calculate_tax(self, revenue: float, category: str):
         """
         Tính thuế cho hộ kinh doanh dựa trên công thức cứng.
-        Quy định mới (2026): Doanh thu <= 500 triệu/năm được miễn thuế.
-        Thuế chỉ tính trên phần doanh thu VƯỢT 500 triệu.
+        Quy định mới (2026 - NĐ 141): Doanh thu <= 1 tỷ/năm được miễn thuế.
+        Với doanh thu > 1 tỷ: 
+        - Thuế GTGT tính trên TOÀN BỘ doanh thu.
+        - Thuế TNCN tính trên phần doanh thu VƯỢT 1 tỷ (được trừ 1 tỷ trước khi tính).
         """
-        if revenue <= 500000000:
+        if revenue <= 1000000000:
             return {
                 "is_taxable": False,
-                "reason": "Doanh thu dưới 500 triệu VNĐ/năm, được miễn thuế GTGT và TNCN theo quy định mới.",
+                "reason": "Doanh thu dưới 1 tỷ VNĐ/năm, được miễn thuế GTGT và TNCN theo quy định mới (NĐ 141/2026/NĐ-CP).",
                 "tax_gtgt": 0,
                 "tax_tncn": 0,
                 "total_tax": 0
@@ -61,20 +63,24 @@ class TaxCalculator:
             
         rate = self.tax_rates.get(category, self.tax_rates["hoat_dong_khac"])
         
-        # Phần doanh thu tính thuế
-        taxable_revenue = revenue - 500000000
+        # Phần doanh thu tính thuế GTGT (tính trên toàn bộ doanh thu)
+        taxable_revenue_gtgt = revenue
         
-        tax_gtgt = taxable_revenue * rate["gtgt"]
-        tax_tncn = taxable_revenue * rate["tncn"]
+        # Phần doanh thu tính thuế TNCN (được trừ 1 tỷ trước khi tính theo Điều 4 NĐ 68 sửa đổi bởi NĐ 141)
+        taxable_revenue_tncn = revenue - 1000000000
+        
+        tax_gtgt = taxable_revenue_gtgt * rate["gtgt"]
+        tax_tncn = taxable_revenue_tncn * rate["tncn"]
         cat_name = self.category_names.get(category, category)
         
         return {
             "is_taxable": True,
             "revenue": revenue,
-            "taxable_revenue": taxable_revenue,
+            "taxable_revenue_gtgt": taxable_revenue_gtgt,
+            "taxable_revenue_tncn": taxable_revenue_tncn,
             "category": cat_name,
             "tax_gtgt": tax_gtgt,
             "tax_tncn": tax_tncn,
             "total_tax": tax_gtgt + tax_tncn,
-            "explanation": f"Ngành nghề: {cat_name}. Theo quy định 2026, chỉ tính thuế phần doanh vượt 500 triệu (tức là {taxable_revenue:,.0f} VNĐ). Tỷ lệ GTGT: {rate['gtgt']*100}%, Tỷ lệ TNCN: {rate['tncn']*100}%."
+            "explanation": f"Ngành nghề: {cat_name}. Doanh thu {revenue:,.0f} VNĐ. Thuế GTGT tính trên toàn bộ doanh thu (Tỷ lệ: {rate['gtgt']*100}%). Thuế TNCN tính trên phần vượt 1 tỷ (tức là {taxable_revenue_tncn:,.0f} VNĐ, Tỷ lệ: {rate['tncn']*100}%)."
         }
