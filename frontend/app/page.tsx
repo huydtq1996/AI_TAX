@@ -8,6 +8,8 @@ type Message = {
   text: string;
   isUser: boolean;
   isTyping?: boolean;
+  fileName?: string;
+  fileType?: string;
 };
 
 type TaxData = {
@@ -18,6 +20,9 @@ type TaxData = {
   tax_tncn?: number;
   total_tax?: number;
   explanation?: string;
+  taxable_revenue_gtgt?: number;
+  taxable_revenue_tncn?: number;
+  taxable_income?: number;
 };
 
 export default function Home() {
@@ -31,6 +36,9 @@ export default function Home() {
   const [inputMessage, setInputMessage] = useState("");
   const [revenue, setRevenue] = useState("");
   const [displayRevenue, setDisplayRevenue] = useState("");
+  const [method, setMethod] = useState("doanh_thu");
+  const [expenses, setExpenses] = useState("");
+  const [displayExpenses, setDisplayExpenses] = useState("");
   const [category, setCategory] = useState("hoat_dong_khac");
   const [taxData, setTaxData] = useState<TaxData | null>(null);
   const [isRecording, setIsRecording] = useState(false);
@@ -86,7 +94,9 @@ export default function Home() {
       setMessages(msgs.map((m: any) => ({
         id: m.id,
         text: m.content,
-        isUser: m.role === 'user'
+        isUser: m.role === 'user',
+        fileName: m.file_name,
+        fileType: m.file_type
       })));
 
       // Nếu có bảng tính thuế từ tin nhắn cuối cùng, hiển thị lại
@@ -159,12 +169,22 @@ export default function Home() {
     }).format(amount);
   };
 
-  const handleSendMessage = async (text: string, forceRevenue = 0, forceCat = "") => {
-    if (!text.trim()) return;
+  const handleSendMessage = async (text: string, forceRevenue = 0, forceCat = "", forceMethod = "", forceExpenses = 0) => {
+    if (!text.trim() && !selectedFile) return;
 
-    const newMessages = [...messages, { id: Date.now().toString(), text, isUser: true }];
+    const currentFileName = selectedFile ? selectedFile.name : undefined;
+    const currentFileType = selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() : undefined;
+
+    const newMessages = [...messages, { 
+      id: Date.now().toString(), 
+      text, 
+      isUser: true,
+      fileName: currentFileName,
+      fileType: currentFileType
+    }];
     setMessages(newMessages);
     setInputMessage("");
+    setSelectedFile(null); // Clear file after adding to messages state
 
     const typingId = "typing-" + Date.now();
     setMessages((prev) => [
@@ -176,6 +196,8 @@ export default function Home() {
     formData.append("message", text);
     formData.append("revenue", forceRevenue.toString() || "0");
     formData.append("category", forceCat || "hoat_dong_khac");
+    formData.append("method", forceMethod || "doanh_thu");
+    formData.append("expenses", forceExpenses.toString() || "0");
     if (selectedFile) formData.append("file", selectedFile);
     if (userToken) formData.append("supabase_token", userToken);
     if (currentSessionId) formData.append("session_id", currentSessionId);
@@ -189,7 +211,6 @@ export default function Home() {
       const data = await response.json();
 
       setMessages((prev) => prev.filter((m) => m.id !== typingId));
-      setSelectedFile(null);
 
       // Cập nhật session_id nếu backend tạo mới
       if (data.session_id && data.session_id !== currentSessionId) {
@@ -246,12 +267,14 @@ export default function Home() {
       san_xuat_van_tai_dich_vu_co_hang_hoa: "Sản xuất, vận tải, dịch vụ có gắn hàng hóa khác",
       khai_thac_khoang_san: "Khai thác tài nguyên, khoáng sản",
       san_xuat_ttdb: "Sản xuất hàng chịu thuế Tiêu thụ đặc biệt",
-      hoat_dong_khac: "Hoạt động kinh doanh khác"
+      hoat_dong_khac: "Hoạt động kinh doanh khác",
+      cho_thue_tai_san_dai_ly: "Cho thuê tài sản, đại lý bảo hiểm, xổ số",
+      dich_vu_noi_dung_so: "Dịch vụ nội dung thông tin số, quảng cáo số"
     };
 
     const catText = categories[category];
-    const msg = `Tính thuế cho tôi. Doanh thu: ${formatVND(Number(revenue))}, Ngành nghề: ${catText}. Hãy giải thích chi tiết bảng tính thuế này.`;
-    handleSendMessage(msg, Number(revenue), category);
+    const msg = `Tính thuế cho tôi theo phương pháp ${method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế'}. Doanh thu: ${formatVND(Number(revenue))}${method === 'thu_nhap' ? `, Chi phí hợp lý: ${formatVND(Number(expenses))}` : ''}, Ngành nghề: ${catText}. Hãy giải thích chi tiết bảng tính thuế này.`;
+    handleSendMessage(msg, Number(revenue), category, method, Number(expenses));
   };
 
   const toggleVoice = () => {
@@ -337,6 +360,23 @@ export default function Home() {
                     <i className={`fa-solid ${msg.isUser ? "fa-user" : "fa-robot"}`}></i>
                   </div>
                   <div className="message-bubble">
+                    {msg.fileName && (
+                      <div className="file-attachment">
+                        <div className="file-info-container">
+                          <div className="file-icon-box">
+                            <i className={`fa-solid ${
+                              msg.fileType === 'PDF' ? 'fa-file-pdf' : 
+                              (['JPG', 'PNG', 'JPEG', 'WEBP'].includes(msg.fileType || '') ? 'fa-file-image' : 
+                              (['XLS', 'XLSX', 'CSV'].includes(msg.fileType || '') ? 'fa-file-excel' : 'fa-file-lines'))
+                            }`}></i>
+                          </div>
+                          <div className="file-details">
+                            <span className="file-name-text">{msg.fileName}</span>
+                            <span className="file-type-badge">{msg.fileType}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                     {msg.isTyping ? (
                       <p>
                         <i className="fa-solid fa-ellipsis fa-fade"></i> {msg.text}
@@ -399,6 +439,13 @@ export default function Home() {
               </h3>
               <form onSubmit={onTaxSubmit} className="tax-form">
                 <div className="form-group">
+                  <label>Phương pháp tính thuế:</label>
+                  <select value={method} onChange={(e) => setMethod(e.target.value)}>
+                    <option value="doanh_thu">Tính theo Doanh thu</option>
+                    <option value="thu_nhap">Tính theo Thu nhập tính thuế (DT - Chi phí)</option>
+                  </select>
+                </div>
+                <div className="form-group">
                   <label>Doanh thu năm (VNĐ):</label>
                   <input
                     type="text"
@@ -422,6 +469,32 @@ export default function Home() {
                     required
                   />
                 </div>
+                {method === "thu_nhap" && (
+                  <div className="form-group">
+                    <label>Chi phí hợp lý (VNĐ):</label>
+                    <input
+                      type="text"
+                      value={displayExpenses}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/\D/g, "");
+                        setExpenses(raw);
+                        setDisplayExpenses(raw.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+                      }}
+                      onBlur={() => {
+                        if (expenses) {
+                          setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
+                        }
+                      }}
+                      onFocus={() => {
+                        if (expenses) {
+                          setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+                        }
+                      }}
+                      placeholder="VD: 100.000.000,00"
+                      required
+                    />
+                  </div>
+                )}
                 <div className="form-group">
                   <label>Ngành nghề:</label>
                   <select value={category} onChange={(e) => setCategory(e.target.value)}>
@@ -436,6 +509,7 @@ export default function Home() {
                       <option value="dich_vu_sua_chua">Dịch vụ sửa chữa (máy tính, đồ gia dụng, xe máy)</option>
                       <option value="dich_vu_tu_van">Dịch vụ tư vấn, thiết kế, pháp luật, kế toán</option>
                       <option value="xay_dung_khong_bao_thau">Xây dựng, lắp đặt không bao thầu nguyên vật liệu</option>
+                      <option value="cho_thue_tai_san_dai_ly">Cho thuê tài sản, đại lý bảo hiểm, xổ số (5%)</option>
                     </optgroup>
                     <optgroup label="3. Sản xuất, vận tải, XD có bao thầu (4.5%)">
                       <option value="san_xuat_gia_cong">Sản xuất, gia công hàng hóa</option>
@@ -447,6 +521,7 @@ export default function Home() {
                       <option value="khai_thac_khoang_san">Khai thác tài nguyên, khoáng sản</option>
                       <option value="san_xuat_ttdb">Sản xuất hàng chịu thuế Tiêu thụ đặc biệt</option>
                       <option value="hoat_dong_khac">Hoạt động kinh doanh khác</option>
+                      <option value="dich_vu_noi_dung_so">Dịch vụ nội dung số, quảng cáo số (5%)</option>
                     </optgroup>
                   </select>
                 </div>
@@ -479,12 +554,20 @@ export default function Home() {
                       </div>
                       <div className="tax-item">
                         <span>DT tính thuế GTGT (toàn bộ):</span>
-                        <strong>{formatVND((taxData as any).taxable_revenue_gtgt || 0)}</strong>
+                        <strong>{formatVND(taxData.taxable_revenue_gtgt || 0)}</strong>
                       </div>
-                      <div className="tax-item">
-                        <span>DT tính thuế TNCN (vượt 1 tỷ):</span>
-                        <strong>{formatVND((taxData as any).taxable_revenue_tncn || 0)}</strong>
-                      </div>
+                      {taxData.taxable_revenue_tncn !== undefined && (
+                        <div className="tax-item">
+                          <span>DT tính thuế TNCN (vượt 1 tỷ):</span>
+                          <strong>{formatVND(taxData.taxable_revenue_tncn || 0)}</strong>
+                        </div>
+                      )}
+                      {taxData.taxable_income !== undefined && (
+                        <div className="tax-item">
+                          <span>Thu nhập tính thuế:</span>
+                          <strong>{formatVND(taxData.taxable_income || 0)}</strong>
+                        </div>
+                      )}
                       <div className="tax-item">
                         <span>Thuế GTGT:</span>
                         <span>{formatVND(taxData.tax_gtgt || 0)}</span>

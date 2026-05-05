@@ -45,7 +45,7 @@ class SupabaseService:
             return res.json()[0]["id"]
         return None
 
-    def save_message(self, session_id, role, content, token, tax_snapshot=None):
+    def save_message(self, session_id, role, content, token, tax_snapshot=None, file_name=None, file_type=None):
         if not self.url or not self.key or not token: return
         headers = {
             "apikey": self.key, 
@@ -59,5 +59,9 @@ class SupabaseService:
         }
         if tax_snapshot:
             data["tax_result_snapshot"] = tax_snapshot
+        if file_name:
+            data["file_name"] = file_name
+        if file_type:
+            data["file_type"] = file_type
             
         requests.post(f"{self.url}/rest/v1/chat_messages", headers=headers, json=data)

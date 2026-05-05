@@ -24,6 +24,8 @@ CREATE TABLE chat_messages (
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')), -- Phân biệt ai là người gửi
     content TEXT NOT NULL,                                              -- Nội dung chat
     attached_file_url TEXT,                                             -- Đường dẫn file/ảnh (Lưu trên Supabase Storage)
+    file_name TEXT,                                                     -- Tên tệp tin (để hiển thị icon)
+    file_type TEXT,                                                     -- Loại tệp tin (PDF, XLSX, ...)
     tax_result_snapshot JSONB,                                          -- Lưu lại bảng tính thuế (nếu có) để khi mở lại chat vẫn còn số liệu
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );

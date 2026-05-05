@@ -51,9 +51,20 @@ def chat():
         title = user_message[:40] + "..." if user_message else "Kế hoạch Thuế"
         session_id = supabase_service.create_session(title, user_token)
         
-    # Lưu tin nhắn của User
+    # 2. Xử lý File Upload
+    file_path = None
+    file_name = None
+    file_type = None
+    if file:
+        os.makedirs("uploads", exist_ok=True)
+        file_name = file.filename
+        file_type = file_name.split('.')[-1].upper() if '.' in file_name else "FILE"
+        file_path = os.path.join("uploads", file_name)
+        file.save(file_path)
+
+    # 3. Lưu tin nhắn của User
     if user_token and session_id:
-        supabase_service.save_message(session_id, 'user', user_message, user_token)
+        supabase_service.save_message(session_id, 'user', user_message, user_token, file_name=file_name, file_type=file_type)
         
     # 2. RAG - Lấy ngữ cảnh luật thuế
     # Chuyển đổi câu hỏi của user thành Vector
@@ -63,15 +74,12 @@ def chat():
     # 3. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
     tax_result = None
     if revenue > 0:
-        tax_result = tax_calculator.calculate_tax(float(revenue), category)
-        legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
+        method = request.form.get('method', 'doanh_thu')
+        expenses_str = request.form.get('expenses', '0')
+        expenses = float(expenses_str) if expenses_str else 0
         
-    # Xử lý File Upload
-    file_path = None
-    if file:
-        os.makedirs("uploads", exist_ok=True)
-        file_path = os.path.join("uploads", file.filename)
-        file.save(file_path)
+        tax_result = tax_calculator.calculate_tax(float(revenue), category, method, expenses)
+        legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
         
     # 4. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
     ai_response = gemini_service.generate_response(user_message, context=legal_context, file_path=file_path)
@@ -88,7 +96,7 @@ def chat():
         "text": ai_response,
         "tax_table": tax_result,
         "session_id": session_id,
-        "sources": ["Luật Thuế GTGT 2024","Nghị định 141/2026/NĐ-CP","Nghị định 68/2026/NĐ-CP","Thông tư 18/2026/TT-BTC","Nghị định 117/2025/NĐ-CP"] if legal_context else []
+        "sources": ["Luật số: 48/2024/QH15","Luật số: 109/2025/QH15","Nghị định 141/2026/NĐ-CP","Nghị định 68/2026/NĐ-CP","Thông tư 18/2026/TT-BTC","Nghị định 117/2025/NĐ-CP"] if legal_context else []
     }
     
     return jsonify(response)
