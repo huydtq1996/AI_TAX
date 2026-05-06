@@ -5,7 +5,7 @@ Dự án được xây dựng dựa trên sơ đồ quy trình, sử dụng AI (
 ## Tính năng
 - Tra cứu luật thuế (RAG với Supabase Vector DB)
 - Tính thuế Hộ Kinh Doanh (công thức cứng theo thông tư 40/2021/TT-BTC)
-- Tư vấn thuế tự động qua Chat (Gemini 2.0 Flash)
+- Tư vấn thuế tự động qua Chat (Gemini 3.0 Flash)
 - Chống Prompt Injection (Guard Service)
 - Hỗ trợ nhập liệu bằng giọng nói (Voice Input)
 - Giao diện hiện đại với Next.js & Tailwind CSS
