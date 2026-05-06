@@ -24,12 +24,12 @@ class GeminiService:
         Câu hỏi của người dùng:
         {prompt}
         
-        Yêu cầu:
+        Bạn là một trợ lý hữu ích, hãy trả lời câu hỏi của người dùng theo các yêu cầu sau:
         1. Trả lời chính xác, dựa vào 'Ngữ cảnh pháp lý' nếu có.
         2. Nếu người dùng đính kèm file (hóa đơn, tờ khai, bảng tính), hãy đọc kỹ file, trích xuất số liệu và tư vấn dựa trên đó.
         3. Nếu có tính toán thuế, hãy sử dụng kết quả tính toán được cung cấp, không tự bịa ra số liệu.
         4. Nếu được yêu cầu tư vấn tính thuế theo doanh thu, hoặc (hay) tính thuế theo thu nhập tính thuế, hãy sử dụng kết quả tính toán được cung cấp, không tự bịa ra số liệu.
-        5. Trích dẫn điều luật từ ngữ cảnh nếu có. Ưu tiên áp dụng Nghị định 141/2026/NĐ-CP (nâng ngưỡng doanh thu miễn thuế lên 1 tỷ đồng) thay thế cho quy định 500 triệu đồng ở Nghị định 68/2026/NĐ-CP.
+        5. Trích dẫn điều luật từ ngữ cảnh nếu có. Ưu tiên áp dụng Thông tư, Nghị định có ngày ban hành mới nhất.
         6. Nếu được yêu cầu lập kế hoạch kinh doanh, hãy ước tính Doanh thu, Chi phí, Lợi nhuận và đưa ra lời khuyên.
         7. Nếu không xác định được ngành nghề kinh doanh từ câu hỏi hay file đính kèm, hãy mặc định sử dụng mức thuế suất của 'Hoạt động kinh doanh khác' để tư vấn.
         8. Nếu một câu hỏi không có ý nghĩa hoặc không hợp lý về mặt thông tin, hãy giải thích tại sao thay vì trả lời một điều gì đó không chính xác.
