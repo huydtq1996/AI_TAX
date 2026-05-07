@@ -5,6 +5,7 @@ import argparse
 import requests
 import re
 import io
+import time
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -26,24 +27,31 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 # 1. TƯƠNG TÁC SUPABASE VECTOR DB
 # ==========================================
 def embed_text(text, title=None):
-    """Biến đổi văn bản thành Vector đa ngôn ngữ (768 chiều)"""
-    try:
-        kwargs = {
-            "model": "gemini-embedding-2",
-            "contents": text,
-            "config": types.EmbedContentConfig(
-                task_type="RETRIEVAL_DOCUMENT",
-                output_dimensionality=768
-            )
-        }
-        if title:
-            kwargs["config"].title = title
-            
-        result = client.models.embed_content(**kwargs)
-        return result.embeddings[0].values
-    except Exception as e:
-        print(f"Lỗi nhúng văn bản: {e}")
-        return None
+    """Biến đổi văn bản thành Vector bằng Gemini Embedding 2 (768 chiều) với cơ chế thử lại"""
+    for attempt in range(3):
+        try:
+            kwargs = {
+                "model": "gemini-embedding-2",
+                "contents": text,
+                "config": types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT",
+                    output_dimensionality=768
+                )
+            }
+            if title:
+                kwargs["config"].title = title
+                
+            result = client.models.embed_content(**kwargs)
+            return result.embeddings[0].values
+        except Exception as e:
+            if "503" in str(e) or "overloaded" in str(e).lower():
+                wait_time = (attempt + 1) * 2
+                print(f"      [!] Server quá tải (503), đang thử lại sau {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"Lỗi nhúng văn bản: {e}")
+                return None
+    return None
 
 def insert_to_supabase(data):
     """Lưu Vector vào bảng tax_documents"""
@@ -59,54 +67,68 @@ def insert_to_supabase(data):
         print(f"  [-] Lỗi lưu DB ({response.status_code}): {response.text}")
 
 # ==========================================
-# 2. AI TRÍCH XUẤT VÀ CHIA ĐOẠN (CHUNKING)
+# 2. AI TRÍCH XUẤT VÀ CHIA ĐOẠN (STRUCTURAL CHUNKING)
 # ==========================================
 def extract_and_chunk_with_gemini(content_parts):
-    print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu (Auto-Chunking)...")
-    model_name = "gemini-flash-latest"
+    print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu theo cấu trúc pháp luật (Điều > Khoản > Điểm)...")
+    model_name = "gemini-2.0-flash" 
     
     prompt = """
-    Bạn là một chuyên gia Pháp lý và Thuế. Hãy đọc tài liệu đính kèm và trích xuất các điều luật, quy định quan trọng.
-    Chia tài liệu thành các đoạn (chunk) nhỏ có ý nghĩa (khoảng 100-200 chữ mỗi đoạn) để làm dữ liệu tìm kiếm Vector.
-    Để đảm bảo không mất ngữ cảnh khi RAG truy xuất, hãy gối đầu (lặp lại) nội dung hoặc bối cảnh quan trọng ở cuối đoạn trước vào đầu đoạn sau (tương đương khoảng 50 ký tự).
-    Tuyệt đối loại bỏ các thông tin rác, mục lục, lời mở đầu. Chỉ giữ nội dung cốt lõi của luật.
+    Bạn là một chuyên gia Pháp luật cấp cao. Hãy đọc tài liệu đính kèm và bóc tách nội dung theo cấu trúc pháp luật Việt Nam.
     
-    YÊU CẦU: CHỈ TRẢ VỀ ĐÚNG MỘT MẢNG JSON, không kèm bất kỳ đoạn hội thoại, không bọc bằng markdown, bắt đầu bằng '[' và kết thúc bằng ']'. Format chuẩn:
+    NHIỆM VỤ CỦA BẠN:
+    1. Trích xuất chính xác ngày ban hành (issue_date) của văn bản.
+    2. Chia nhỏ văn bản thành các đoạn (chunks) dựa trên cấu trúc: Điều > Khoản > Điểm.
+    3. Mỗi chunk tương ứng với một đơn vị nội dung hoàn chỉnh (thường là một Khoản hoặc một Điều nếu điều đó ngắn).
+    4. Tiêu đề (title) của mỗi chunk phải ghi rõ: [Tên văn bản] - [Điều X] - [Khoản Y].
+    5. Nội dung (content) phải giữ nguyên văn, không tóm tắt, bao gồm cả bối cảnh của Điều đó nếu đoạn đó là một Khoản.
+    
+    YÊU CẦU ĐỊNH DẠNG JSON:
+    Trả về duy nhất một mảng JSON:
     [
       {
-        "title": "Tên văn bản hoặc Chương (VD: Thông tư 40/2021)",
-        "content": "Nội dung chi tiết của điều luật hoặc quy định...",
-        "metadata": {"topic": "từ_khóa_1, từ_khóa_2"},
-        "issue_date": "2025-11-26" // BẮT BUỘC CHUYỂN ĐỔI mọi định dạng ngày (như "ngày 26 tháng 11 năm 2025" hay "26/11/2025") sang chuẩn YYYY-MM-DD. Nếu không rõ thì để null
+        "title": "Thông tư số: 18/2026/TT-BTC - Điều 4 - Khoản 1",
+        "content": "Nội dung đầy đủ của khoản 1 điều 4...",
+        "issue_date": "YYYY-MM-DD",
+        "metadata": {
+            "law_name": "Thông tư số: 18/2026/TT-BTC",
+            "article": "4",
+            "section": "1",
+            "type": "Thông tư"
+        }
       }
     ]
+    LƯU Ý: Tuyệt đối không thêm văn bản ngoài JSON. Nếu không rõ ngày ban hành, để null cho issue_date.
     """
     
-    try:
-        parts = content_parts if isinstance(content_parts, list) else [content_parts]
-        parts.append(prompt)
-        
-        response = client.models.generate_content(
-            model=model_name,
-            contents=parts,
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json"
-            )
-        )
-        
-        # Xử lý text để chắc chắn là JSON hợp lệ
-        text_resp = response.text.strip()
-        if text_resp.startswith('```json'):
-            text_resp = text_resp[7:-3].strip()
-        elif text_resp.startswith('```'):
-            text_resp = text_resp[3:-3].strip()
+    for attempt in range(3):
+        try:
+            # Chuẩn hóa đầu vào
+            contents = content_parts if isinstance(content_parts, list) else [content_parts]
+            contents.append(prompt)
             
-        chunks = json.loads(text_resp)
-        print(f"✅ AI đã trích xuất thành công {len(chunks)} đoạn luật!")
-        return chunks
-    except Exception as e:
-        print(f"❌ Lỗi khi AI phân tích tài liệu: {e}")
-        return []
+            response = client.models.generate_content(
+                model=model_name,
+                contents=contents,
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            )
+            
+            # Làm sạch JSON (xử lý cả trường hợp AI bọc trong ```json)
+            text_resp = response.text.strip()
+            text_resp = re.sub(r'```json\n|```json|```', '', text_resp).strip()
+                
+            chunks = json.loads(text_resp)
+            print(f"✅ Thành công! Đã bóc tách {len(chunks)} đoạn luật.")
+            return chunks
+        except Exception as e:
+            if "503" in str(e) or "overloaded" in str(e).lower():
+                wait_time = (attempt + 1) * 5
+                print(f"  [!] Server quá tải (503). Đang thử lại sau {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"❌ Lỗi AI: {e}")
+                break
+    return []
 
 # ==========================================
 # 3. TIẾP NHẬN ĐẦU VÀO (FILE / URL)
@@ -133,7 +155,6 @@ def process_url(url):
 def process_pdf(pdf_path):
     print(f"📄 Đang tải file PDF [{pdf_path}] lên Google Cloud AI...")
     try:
-        # File API của Gemini xử lý PDF native cực mạnh mà không cần dùng PyPDF2
         uploaded_file = client.files.upload(file=pdf_path)
         print("Đã tải lên hệ thống Gemini. Sẵn sàng xử lý!")
         return [uploaded_file]

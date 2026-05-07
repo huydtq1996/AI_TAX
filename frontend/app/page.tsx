@@ -10,6 +10,7 @@ type Message = {
   isTyping?: boolean;
   fileName?: string;
   fileType?: string;
+  sources?: string[];
 };
 
 type TaxData = {
@@ -46,6 +47,8 @@ export default function Home() {
   const [userToken, setUserToken] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const [showFiles, setShowFiles] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
@@ -96,7 +99,8 @@ export default function Home() {
         text: m.content,
         isUser: m.role === 'user',
         fileName: m.file_name,
-        fileType: m.file_type
+        fileType: m.file_type,
+        sources: m.sources
       })));
 
       // Nếu có bảng tính thuế từ tin nhắn cuối cùng, hiển thị lại
@@ -117,14 +121,14 @@ export default function Home() {
   const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (!window.confirm('Bạn có chắc chắn muốn xóa cuộc trò chuyện này?')) return;
-    
+
     // Xóa từ Database
     await supabase.from('chat_sessions').delete().eq('id', sessionId);
-    
+
     // Xóa khỏi UI
     const newSessions = chatSessions.filter(s => s.id !== sessionId);
     setChatSessions(newSessions);
-    
+
     if (currentSessionId === sessionId) {
       if (newSessions.length > 0) {
         loadSession(newSessions[0].id);
@@ -175,9 +179,9 @@ export default function Home() {
     const currentFileName = selectedFile ? selectedFile.name : undefined;
     const currentFileType = selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() : undefined;
 
-    const newMessages = [...messages, { 
-      id: Date.now().toString(), 
-      text, 
+    const newMessages = [...messages, {
+      id: Date.now().toString(),
+      text,
       isUser: true,
       fileName: currentFileName,
       fileType: currentFileType
@@ -189,7 +193,7 @@ export default function Home() {
     const typingId = "typing-" + Date.now();
     setMessages((prev) => [
       ...prev,
-      { id: typingId, text: "Đang suy nghĩ...", isUser: false, isTyping: true },
+      { id: typingId, text: "Đang suy nghĩ", isUser: false, isTyping: true },
     ]);
 
     const formData = new FormData();
@@ -229,11 +233,16 @@ export default function Home() {
       } else {
         setMessages((prev) => [
           ...prev,
-          { id: Date.now().toString(), text: data.text, isUser: false },
+          { id: Date.now().toString(), text: data.text, isUser: false, sources: data.sources },
         ]);
 
         if (data.tax_table) {
           setTaxData(data.tax_table);
+        }
+        
+        // Nếu vừa gửi file xong, cập nhật lại danh sách file trong kho lưu trữ
+        if (currentFileName) {
+          fetchFiles();
         }
       }
     } catch (error) {
@@ -242,6 +251,34 @@ export default function Home() {
         ...prev,
         { id: Date.now().toString(), text: "Xin lỗi, đã có lỗi kết nối đến máy chủ API.", isUser: false },
       ]);
+    }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/files");
+      const data = await response.json();
+      setUploadedFiles(data);
+    } catch (error) {
+      console.error("Error fetching files:", error);
+    }
+  };
+
+  const handleDownload = (filename: string) => {
+    window.open(`http://localhost:5000/api/files/${filename}`, "_blank");
+  };
+
+  const handleDeleteFile = async (filename: string) => {
+    if (!window.confirm(`Bạn có chắc chắn muốn xóa file ${filename}?`)) return;
+    try {
+      const response = await fetch(`http://localhost:5000/api/files/${filename}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        fetchFiles();
+      }
+    } catch (error) {
+      console.error("Error deleting file:", error);
     }
   };
 
@@ -273,7 +310,19 @@ export default function Home() {
     };
 
     const catText = categories[category];
-    const msg = `Tính thuế cho tôi theo phương pháp ${method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế'}. Doanh thu: ${formatVND(Number(revenue))}${method === 'thu_nhap' ? `, Chi phí hợp lý: ${formatVND(Number(expenses))}` : ''}, Ngành nghề: ${catText}. Hãy giải thích chi tiết bảng tính thuế này.`;
+    const msgParts = [
+      `### ⌨️ Tính thuế cho tôi theo phương pháp ${method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế'}:`,
+      `*   **Doanh thu**: ${formatVND(Number(revenue))}`
+    ];
+
+    if (method === 'thu_nhap') {
+      msgParts.push(`*   **Chi phí hợp lý**: ${formatVND(Number(expenses))}`);
+    }
+
+    msgParts.push(`*   **Ngành nghề**: ${catText}`);
+    msgParts.push(`👉 *Hãy giải thích chi tiết bảng tính thuế này.*`);
+
+    const msg = msgParts.join('\n');
     handleSendMessage(msg, Number(revenue), category, method, Number(expenses));
   };
 
@@ -299,12 +348,54 @@ export default function Home() {
   };
 
   const renderFormattedText = (text: string) => {
-    // Basic Markdown parser for the simple responses we get
-    let html = text
+    // 1. Normalize whitespace
+    let html = text.replace(/\n\s*\n/g, "\n");
+
+    html = html
+      // Clean up LaTeX
+      .replace(/\\times/g, "×")
+      .replace(/\\mathbf\{(.*?)\}/g, "<strong>$1</strong>")
+      .replace(/\\\$/g, "$")
+      .replace(/\\/g, "")
+
+      // Headings
+      .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
+      .replace(/^#### (.*?)$/gm, "<h4>$1</h4>")
+
+      // Bold/Italic
       .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
       .replace(/\*(.*?)\*/g, "<em>$1</em>")
+
+      // List items (temporary tag)
+      .replace(/^\* (.*?)$/gm, "<temp-li>$1</temp-li>")
+
+      // Tables
+      .replace(/^\|(.+)\|$/gm, (match, content) => {
+        const cells = content.split('|').map((c: string) => c.trim());
+        if (cells.every((c: string) => c.includes('---'))) return "";
+        return `<temp-tr>${cells.map((c: string) => `<td>${c}</td>`).join('')}</temp-tr>`;
+      })
+
+      // Line breaks for remaining newlines
       .replace(/\n/g, "<br>");
-    return <p dangerouslySetInnerHTML={{ __html: html }} />;
+
+    // Grouping list items into <ul>
+    html = html.replace(/(<temp-li>.*?<\/temp-li>(<br>|\s)*)+/gms, (match) => {
+      return `<ul>${match.replace(/<temp-li>/g, "<li>").replace(/<\/temp-li>/g, "</li>").replace(/<br>/g, "")}</ul>`;
+    });
+
+    // Grouping table rows into <table>
+    html = html.replace(/(<temp-tr>.*?<\/temp-tr>(<br>|\s)*)+/gms, (match) => {
+      return `<table>${match.replace(/<temp-tr>/g, "<tr>").replace(/<\/temp-tr>/g, "</tr>").replace(/<br>/g, "")}</table>`;
+    });
+
+    // Final clean up: Remove <br> next to block tags
+    html = html
+      .replace(/<br><(h3|h4|ul|table)/g, "<$1")
+      .replace(/<\/(h3|h4|ul|table)><br>/g, "</$1>")
+      .replace(/<br><\/(ul|table)>/g, "</$1>");
+
+    return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
   return (
@@ -327,7 +418,7 @@ export default function Home() {
                   style={{ flex: 1, textAlign: 'left', padding: '12px 10px', border: 'none', backgroundColor: 'transparent', color: currentSessionId === session.id ? '#041e49' : '#444', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
                   <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title}
                 </button>
-                <button 
+                <button
                   onClick={(e) => deleteSession(e, session.id)}
                   title="Xóa cuộc trò chuyện"
                   style={{ padding: '8px', border: 'none', backgroundColor: 'transparent', color: '#888', cursor: 'pointer', borderRadius: '50%' }}>
@@ -336,6 +427,17 @@ export default function Home() {
               </li>
             ))}
           </ul>
+        </div>
+
+        {/* Nút quản lý file ở cuối sidebar */}
+        <div style={{ marginTop: 'auto', padding: '10px 0', borderTop: '1px solid #e0e0e0' }}>
+          <button
+            onClick={() => { setShowFiles(true); fetchFiles(); }}
+            style={{ width: '100%', padding: '12px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#444', transition: 'background 0.2s' }}
+          >
+            <i className="fa-solid fa-folder-open" style={{ fontSize: '18px', color: '#5f6368' }}></i>
+            <span style={{ fontSize: '14px', fontWeight: 500 }}>Quản lý tệp tin</span>
+          </button>
         </div>
       </div>
 
@@ -349,7 +451,7 @@ export default function Home() {
         </header>
 
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-          <div className="chat-section" style={{ flex: 1 }}>
+          <div className="chat-section">
             <div className="chat-window" ref={chatWindowRef}>
               {messages.map((msg) => (
                 <div
@@ -364,11 +466,10 @@ export default function Home() {
                       <div className="file-attachment">
                         <div className="file-info-container">
                           <div className="file-icon-box">
-                            <i className={`fa-solid ${
-                              msg.fileType === 'PDF' ? 'fa-file-pdf' : 
-                              (['JPG', 'PNG', 'JPEG', 'WEBP'].includes(msg.fileType || '') ? 'fa-file-image' : 
-                              (['XLS', 'XLSX', 'CSV'].includes(msg.fileType || '') ? 'fa-file-excel' : 'fa-file-lines'))
-                            }`}></i>
+                            <i className={`fa-solid ${msg.fileType === 'PDF' ? 'fa-file-pdf' :
+                                (['JPG', 'PNG', 'JPEG', 'WEBP'].includes(msg.fileType || '') ? 'fa-file-image' :
+                                  (['XLS', 'XLSX', 'CSV'].includes(msg.fileType || '') ? 'fa-file-excel' : 'fa-file-lines'))
+                              }`}></i>
                           </div>
                           <div className="file-details">
                             <span className="file-name-text">{msg.fileName}</span>
@@ -378,11 +479,68 @@ export default function Home() {
                       </div>
                     )}
                     {msg.isTyping ? (
-                      <p>
-                        <i className="fa-solid fa-ellipsis fa-fade"></i> {msg.text}
-                      </p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{msg.text}</span>
+                        <div className="typing-indicator" style={{ transform: 'translateY(2px)' }}>
+                          <span className="typing-dot"></span>
+                          <span className="typing-dot"></span>
+                          <span className="typing-dot"></span>
+                        </div>
+                      </div>
                     ) : (
-                      renderFormattedText(msg.text)
+                      <>
+                        {renderFormattedText(msg.text)}
+
+                        {msg.sources && msg.sources.length > 0 && (
+                          <div className="sources-wrapper" style={{
+                            marginTop: '12px',
+                            paddingTop: '12px',
+                            borderTop: '1px solid var(--border-color)',
+                          }}>
+                            <details style={{ cursor: 'pointer' }}>
+                              <summary style={{
+                                listStyle: 'none',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                color: 'var(--primary)',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.03em',
+                                outline: 'none'
+                              }}>
+                                <i className="fa-solid fa-circle-info"></i>
+                                Nguồn tham chiếu ({msg.sources.length})
+                                <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.6rem', marginLeft: 'auto', transition: 'transform 0.3s' }}></i>
+                              </summary>
+
+                              <div className="sources-list" style={{
+                                marginTop: '10px',
+                                display: 'flex',
+                                flexWrap: 'wrap',
+                                gap: '6px',
+                                animation: 'slideDown 0.2s ease-out'
+                              }}>
+                                {msg.sources.map((source, idx) => (
+                                  <span key={idx} style={{
+                                    fontSize: '0.7rem',
+                                    padding: '3px 10px',
+                                    backgroundColor: 'rgba(79, 70, 229, 0.08)',
+                                    borderRadius: '100px',
+                                    border: '1px solid rgba(79, 70, 229, 0.15)',
+                                    color: '#4f46e5',
+                                    fontWeight: '500',
+                                    display: 'inline-block'
+                                  }}>
+                                    {source}
+                                  </span>
+                                ))}
+                              </div>
+                            </details>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -576,22 +734,22 @@ export default function Home() {
                         <span>Thuế TNCN:</span>
                         <span>{formatVND(taxData.tax_tncn || 0)}</span>
                       </div>
-                      <div className="tax-item tax-total" style={{ marginTop: "15px", paddingTop: "12px", borderTop: "2px dashed #bbf7d0", alignItems: "center" }}>
+                      <div className="tax-item tax-total" style={{ alignItems: "center" }}>
                         <span style={{ fontSize: "1.1rem", fontWeight: "bold" }}>Tổng thuế phải nộp:</span>
                         <span style={{ fontSize: "1.2rem", fontWeight: "bold", color: "#15803d" }}>{formatVND(taxData.total_tax || 0)}</span>
                       </div>
-                      <div style={{ 
-                        marginTop: "15px", 
-                        padding: "12px", 
-                        backgroundColor: "#f0fdf4", 
-                        border: "1px solid #bbf7d0", 
-                        borderRadius: "8px", 
-                        fontSize: "0.85rem", 
+                      <div style={{
+                        marginTop: "15px",
+                        padding: "12px",
+                        backgroundColor: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: "8px",
+                        fontSize: "0.85rem",
                         color: "#166534",
                         lineHeight: "1.6",
                         whiteSpace: "pre-wrap"
                       }}>
-                        <strong><i className="fa-solid fa-circle-info"></i> Giải thích:</strong><br/>
+                        <strong><i className="fa-solid fa-circle-info"></i> Giải thích:</strong><br />
                         {taxData.explanation}
                       </div>
                     </>
@@ -602,6 +760,55 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      {/* Modal quản lý file */}
+      {showFiles && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem', color: '#1a1a1a' }}>
+                <i className="fa-solid fa-folder-open" style={{ color: '#5f6368' }}></i> Danh sách tệp đã tải lên
+              </h3>
+              <button onClick={() => setShowFiles(false)} style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#888' }}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+              {uploadedFiles.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: '#888' }}>
+                  <i className="fa-solid fa-file-circle-exclamation" style={{ fontSize: '48px', marginBottom: '10px', display: 'block', opacity: 0.5 }}></i>
+                  Chưa có tệp tin nào được tải lên.
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {uploadedFiles.map((file) => (
+                    <div key={file.name} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '12px', borderRadius: '10px', border: '1px solid #eee', backgroundColor: '#fafafa' }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '8px', backgroundColor: '#fff', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#5f6368' }}>
+                        <i className={`fa-solid ${file.type === 'PDF' ? 'fa-file-pdf' : (['JPG', 'PNG', 'JPEG', 'WEBP'].includes(file.type) ? 'fa-file-image' : (['XLS', 'XLSX', 'CSV'].includes(file.type) ? 'fa-file-excel' : 'fa-file-lines'))}`} style={{ fontSize: '18px' }}></i>
+                      </div>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ fontSize: '14px', fontWeight: 600, color: '#333', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{file.name}</div>
+                        <div style={{ fontSize: '12px', color: '#888' }}>{(file.size / 1024).toFixed(1)} KB • {new Date(file.ctime * 1000).toLocaleDateString('vi-VN')}</div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button onClick={() => handleDownload(file.name)} title="Tải xuống" style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', backgroundColor: '#e8f0fe', color: '#1a73e8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fa-solid fa-download"></i>
+                        </button>
+                        <button onClick={() => handleDeleteFile(file.name)} title="Xóa" style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', backgroundColor: '#fce8e6', color: '#d93025', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          <i className="fa-solid fa-trash"></i>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => setShowFiles(false)} className="primary-button" style={{ padding: '10px 24px', fontSize: '14px' }}>Đóng</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

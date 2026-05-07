@@ -20,6 +20,9 @@ supabase_service = SupabaseService()
 tax_calculator = TaxCalculator()
 guard_service = GuardService()
 
+# Đảm bảo thư mục uploads tồn tại
+os.makedirs("uploads", exist_ok=True)
+
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "ok", "message": "AI Tax Assistant Backend is running!"})
@@ -69,7 +72,7 @@ def chat():
     # 2. RAG - Lấy ngữ cảnh luật thuế
     # Chuyển đổi câu hỏi của user thành Vector
     query_vector = gemini_service.embed_text(user_message)
-    legal_context = supabase_service.search_tax_laws(query_vector)
+    legal_context, sources = supabase_service.search_tax_laws(query_vector)
     
     # 3. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
     tax_result = None
@@ -84,22 +87,57 @@ def chat():
     # 4. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
     ai_response = gemini_service.generate_response(user_message, context=legal_context, file_path=file_path)
     
-    # Dọn dẹp file tạm
-    if file_path and os.path.exists(file_path):
-        os.remove(file_path)
+    # Nếu lỗi API thì ẩn nguồn tham chiếu
+    is_error = ai_response.startswith("Lỗi") or "Hết quota" in ai_response
+    if is_error:
+        sources = []
         
     # Lưu tin nhắn của AI
     if user_token and session_id:
-        supabase_service.save_message(session_id, 'assistant', ai_response, user_token, tax_snapshot=tax_result)
+        supabase_service.save_message(session_id, 'assistant', ai_response, user_token, tax_snapshot=tax_result, sources=sources)
     
     response = {
         "text": ai_response,
         "tax_table": tax_result,
         "session_id": session_id,
-        "sources": ["Luật số: 48/2024/QH15","Luật số: 109/2025/QH15","Nghị định 141/2026/NĐ-CP","Nghị định 68/2026/NĐ-CP","Thông tư 18/2026/TT-BTC","Nghị định 117/2025/NĐ-CP"] if legal_context else []
+        "sources": sources
     }
     
     return jsonify(response)
+
+@app.route('/api/files', methods=['GET'])
+def list_files():
+    upload_dir = "uploads"
+    if not os.path.exists(upload_dir):
+        return jsonify([])
+    
+    files = []
+    for filename in os.listdir(upload_dir):
+        file_path = os.path.join(upload_dir, filename)
+        if os.path.isfile(file_path):
+            stats = os.stat(file_path)
+            files.append({
+                "name": filename,
+                "size": stats.st_size,
+                "ctime": stats.st_ctime,
+                "type": filename.split('.')[-1].upper() if '.' in filename else "FILE"
+            })
+    # Sắp xếp theo thời gian tạo mới nhất
+    files.sort(key=lambda x: x['ctime'], reverse=True)
+    return jsonify(files)
+
+@app.route('/api/files/<filename>', methods=['GET'])
+def download_file(filename):
+    from flask import send_from_directory
+    return send_from_directory("uploads", filename)
+
+@app.route('/api/files/<filename>', methods=['DELETE'])
+def delete_file(filename):
+    file_path = os.path.join("uploads", filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+        return jsonify({"message": f"Deleted {filename}"})
+    return jsonify({"error": "File not found"}), 404
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
