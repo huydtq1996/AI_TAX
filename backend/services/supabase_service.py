@@ -23,10 +23,22 @@ class SupabaseService:
         if response.status_code == 200:
             results = response.json()
             if results:
-                # 1. Kiểm tra cập nhật/sửa đổi (Chỉ kiểm tra cho top 15 kết quả đầu tiên để tối ưu hiệu suất)
-                results = self._check_for_updates(results[:15]) + results[15:]
+                # 1. Lọc Top các đoạn có độ tương đồng (semantic similarity) cao nhất
+                # Kết quả từ RPC trả về đã được sắp xếp theo độ tương đồng giảm dần.
+                # Lấy các đoạn liên quan nhất và giới hạn tối đa 5 đoạn/văn bản để tránh loãng context.
+                filtered_results, doc_counts = [], {}
+                for r in results:
+                    base_title = r.get('title', 'Tài liệu').split(' - ')[0]
+                    doc_counts[base_title] = doc_counts.get(base_title, 0) + 1
+                    if doc_counts[base_title] <= 5:
+                        filtered_results.append(r)
+                    if len(filtered_results) >= 15: break
 
-                # 2. Sắp xếp đa tầng: Năm > Số hiệu > Ngày ban hành
+                # 2. Kiểm tra cập nhật/sửa đổi chính xác cho các đoạn đã được chọn lọc
+                filtered_results = self._check_for_updates(filtered_results)
+
+                # 3. Sắp xếp đa tầng các đoạn đã chọn: Năm > Số hiệu > Ngày ban hành
+                # Đảm bảo LLM đọc các quy định mới nhất trước trong số các đoạn có độ liên quan cao.
                 def get_sort_key(item):
                     title = item.get('title', '')
                     doc_id = self._parse_doc_id(title) or self._parse_doc_id(item.get('content', ''))
@@ -35,16 +47,7 @@ class SupabaseService:
                         return (doc_id['year'], doc_id['number'], issue_date)
                     return (issue_date[:4], 0, issue_date)
 
-                results.sort(key=get_sort_key, reverse=True)
-                
-                # Lọc tối đa 4 đoạn cho mỗi văn bản để tránh loãng dữ liệu
-                filtered_results, doc_counts = [], {}
-                for r in results:
-                    base_title = r.get('title', 'Tài liệu').split(' - ')[0]
-                    doc_counts[base_title] = doc_counts.get(base_title, 0) + 1
-                    if doc_counts[base_title] <= 4:
-                        filtered_results.append(r)
-                    if len(filtered_results) >= 12: break
+                filtered_results.sort(key=get_sort_key, reverse=True)
 
                 context = "LƯU Ý QUAN TRỌNG: Ưu tiên số liệu của VĂN BẢN [1] vì đây là văn bản mới nhất. Nếu có cảnh báo 'ĐÃ ĐƯỢC SỬA ĐỔI', hãy tuyệt đối tuân theo văn bản mới hơn.\n\n"
                 sources = []
