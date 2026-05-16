@@ -72,17 +72,17 @@ AS $$
 BEGIN
   RETURN QUERY
   SELECT
-    tax_documents.id,
-    tax_documents.title,
-    tax_documents.content,
-    tax_documents.metadata,
-    tax_documents.issue_date,
-    1 - (tax_documents.embedding <=> query_embedding) AS similarity
-  FROM tax_documents
-  WHERE 1 - (tax_documents.embedding <=> query_embedding) > match_threshold
-  ORDER BY 
-    tax_documents.embedding <=> query_embedding ASC, 
-    tax_documents.issue_date DESC NULLS LAST
+    t.id,
+    t.title,
+    t.content,
+    t.metadata,
+    t.issue_date,
+    1 - (t.embedding <=> query_embedding) AS similarity
+  FROM tax_documents t
+  -- Khoảng cách Cosine < (1 - threshold) tương đương với similarity > threshold
+  WHERE t.embedding <=> query_embedding < 1 - match_threshold
+  -- Sắp xếp chuẩn của pgvector để ăn được Index: Khoảng cách càng nhỏ càng xếp trên
+  ORDER BY t.embedding <=> query_embedding ASC
   LIMIT match_count;
 END;
 $$;

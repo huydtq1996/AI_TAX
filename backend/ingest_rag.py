@@ -71,7 +71,7 @@ def insert_to_supabase(data):
 # ==========================================
 def extract_and_chunk_with_gemini(content_parts):
     print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu theo cấu trúc pháp luật (Điều > Khoản > Điểm)...")
-    model_name = "gemini-2.0-flash" 
+    model_name = "gemini-2.5-flash" 
     
     prompt = """
     Bạn là một chuyên gia Pháp luật cấp cao. Hãy đọc tài liệu đính kèm và bóc tách nội dung theo cấu trúc pháp luật Việt Nam.
