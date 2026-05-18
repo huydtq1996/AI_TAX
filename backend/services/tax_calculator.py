@@ -53,6 +53,7 @@ class TaxCalculator:
     def calculate_tax(self, revenue: float, category: str, method: str = "doanh_thu", expenses: float = 0):
         """
         Tính thuế cho hộ kinh doanh dựa trên công thức cứng.
+        Nếu người dùng không cung cấp thông tin ngành nghề, mặc định chọn "Hoạt động kinh doanh khác" và thông báo cho người dùng biết.
         Quy định mới (2026 - NĐ 141): Doanh thu <= 1 tỷ/năm được miễn thuế.
         Với doanh thu > 1 tỷ: 
         - Thuế GTGT tính trên TOÀN BỘ doanh thu.
@@ -102,7 +103,7 @@ class TaxCalculator:
                 "tax_gtgt": tax_gtgt,
                 "tax_tncn": tax_tncn,
                 "total_tax": tax_gtgt + tax_tncn,
-                "explanation": f"- Ngành nghề: {cat_name}\n- Phương pháp: Tính theo Thu nhập tính thuế\n- Doanh thu {revenue:,.0f} VNĐ, Chi phí hợp lý: {expenses:,.0f} VNĐ\n  • Thuế GTGT tính trên toàn bộ doanh thu (Tỷ lệ: {rate['gtgt']*100}%).\n  • Thuế TNCN tính trên Thu nhập tính thuế = Doanh thu - Chi phí = {taxable_income:,.0f} VNĐ (Tỷ lệ: {tncn_rate_net*100}% theo Khoản 2 Điều 7 Luật 109/2025/QH15)."
+                "explanation": f"- Ngành nghề: {cat_name}\n- Phương pháp: Tính theo Thu nhập tính thuế\n- Doanh thu {revenue:,.0f} VNĐ, Chi phí hợp lý: {expenses:,.0f} VNĐ\n  • Thuế GTGT tính trên toàn bộ doanh thu (Tỷ lệ: {rate['gtgt']*100}%).\n  • Thuế TNCN tính trên Thu nhập tính thuế = Doanh thu - Chi phí = {taxable_income:,.0f} VNĐ (Tỷ lệ: {tncn_rate_net*100}%)."
             }
         else:
             # Phương pháp tính theo doanh thu

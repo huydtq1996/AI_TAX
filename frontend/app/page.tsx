@@ -341,6 +341,7 @@ export default function Home() {
     if (e.target.files && e.target.files.length > 0) {
       setSelectedFile(e.target.files[0]);
     }
+    e.target.value = '';
   };
 
   const handleAttachClick = () => {

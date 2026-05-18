@@ -36,7 +36,7 @@ class GeminiService:
         5. Luôn trích dẫn nguồn luật (Tên Luật/Nghị định/Thông tư, Điều, Khoản) ở cuối câu trả lời hoặc ngay cạnh luận điểm để tăng độ tin cậy.
         6. Nếu không xác định được ngành nghề kinh doanh, mặc định tư vấn theo mức thuế suất của 'Hoạt động kinh doanh khác'.
         7. Trình bày câu trả lời chuyên nghiệp, rành mạch bằng Markdown. Rất khuyến khích sử dụng Bảng (Table) để so sánh nếu có sự thay đổi giữa luật cũ và luật mới.
-        8. ĐẶC BIỆT: Nếu trong ngữ cảnh có cung cấp "Kết quả tính thuế sơ bộ" (do hệ thống tự tính), bạn CHỈ CẦN giải thích ý nghĩa của các con số đó một cách vô cùng NGẮN GỌN, súc tích và dễ hiểu nhất (khoảng 2-3 câu). Tuyệt đối không giải thích dài dòng hay chép lại toàn bộ công thức.
+        8. ĐẶC BIỆT: Luôn dùng tool TaxCalculator để tính thuế. Nếu trong ngữ cảnh có cung cấp "Kết quả tính thuế sơ bộ" (do hệ thống tự tính), bạn CHỈ CẦN giải thích ý nghĩa của các con số đó một cách vô cùng NGẮN GỌN, súc tích và dễ hiểu nhất (khoảng 2-3 câu). Tuyệt đối không giải thích dài dòng hay chép lại toàn bộ công thức.
         """
         
         for attempt in range(3):
