@@ -139,15 +139,20 @@ class SupabaseService:
                 # (2) & (3). Tìm văn bản mới hơn và trích xuất các đoạn sửa đổi/bổ sung
                 filtered_results, amendment_docs = self._check_for_updates(filtered_results)
 
-                # Sắp xếp đa tầng: Năm > Số hiệu > Ngày ban hành
+                # Sắp xếp đa tầng: Năm > Ngày ban hành > Số hiệu
                 def get_sort_key(item):
                     meta = item.get('metadata', {})
                     law_name = meta.get('law_name', item.get('title', ''))
                     doc_id = self._parse_doc_id(law_name)
                     issue_date = item.get('issue_date') or '0000-00-00'
+                    
                     if doc_id:
-                        return (doc_id['year'], doc_id['number'], issue_date)
-                    return (issue_date[:4], 0, issue_date)
+                        # Đưa issue_date lên trước number để fix lỗi cross-type
+                        return (doc_id['year'], issue_date, doc_id['number'])
+                        
+                    # Fallback nếu văn bản không có chuẩn số hiệu
+                    year_from_date = int(issue_date[:4]) if issue_date != '0000-00-00' else 0
+                    return (year_from_date, issue_date, 0)
 
                 filtered_results.sort(key=get_sort_key, reverse=True)
 
