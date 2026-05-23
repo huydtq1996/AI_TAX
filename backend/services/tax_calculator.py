@@ -53,7 +53,7 @@ class TaxCalculator:
     def calculate_tax(self, revenue: float, category: str, method: str = "doanh_thu", expenses: float = 0):
         """
         Tính thuế cho hộ kinh doanh dựa trên công thức cứng.
-        Nếu người dùng không cung cấp thông tin ngành nghề, mặc định chọn "Hoạt động kinh doanh khác" và thông báo cho người dùng biết.
+        Nếu người dùng không cung cấp thông tin ngành nghề, mặc định chọn "Hoạt động kinh doanh khác" và thông báo cho người dùng biết để bổ sung.
         Quy định mới (2026 - NĐ 141): Doanh thu <= 1 tỷ/năm được miễn thuế.
         Với doanh thu > 1 tỷ: 
         - Thuế GTGT tính trên TOÀN BỘ doanh thu.

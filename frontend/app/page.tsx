@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, FormEvent } from "react";
+import { useState, useRef, useEffect, FormEvent, ChangeEvent } from "react";
 import { supabase } from '../utils/supabase';
 
 type Message = {
@@ -171,6 +171,46 @@ export default function Home() {
       style: "currency",
       currency: "VND",
     }).format(amount);
+  };
+
+  const handleNumberChange = (
+    e: ChangeEvent<HTMLInputElement>,
+    setVal: (val: string) => void,
+    setDisplayVal: (val: string) => void
+  ) => {
+    const input = e.target;
+    const oldVal = input.value;
+    const selectionStart = input.selectionStart || 0;
+
+    // Đếm số lượng chữ số đứng trước vị trí con trỏ trong chuỗi nhập vào
+    let digitsBeforeCursor = 0;
+    for (let i = 0; i < selectionStart; i++) {
+      if (/\d/.test(oldVal[i])) {
+        digitsBeforeCursor++;
+      }
+    }
+
+    const raw = oldVal.replace(/\D/g, "");
+    setVal(raw);
+
+    const formatted = raw.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+    setDisplayVal(formatted);
+
+    // Phục hồi vị trí con trỏ sau khi React cập nhật DOM
+    setTimeout(() => {
+      let newCursorPos = 0;
+      let digitsSeen = 0;
+      for (let i = 0; i < formatted.length; i++) {
+        if (digitsSeen === digitsBeforeCursor) {
+          break;
+        }
+        if (/\d/.test(formatted[i])) {
+          digitsSeen++;
+        }
+        newCursorPos++;
+      }
+      input.setSelectionRange(newCursorPos, newCursorPos);
+    }, 0);
   };
 
   const handleSendMessage = async (text: string, forceRevenue = 0, forceCat = "", forceMethod = "", forceExpenses = 0) => {
@@ -349,54 +389,86 @@ export default function Home() {
   };
 
   const renderFormattedText = (text: string) => {
-    // 1. Normalize whitespace
-    let html = text.replace(/\n\s*\n/g, "\n");
+    if (!text) return null;
 
-    html = html
-      // Clean up LaTeX
-      .replace(/\\times/g, "×")
-      .replace(/\\mathbf\{(.*?)\}/g, "<strong>$1</strong>")
-      .replace(/\\\$/g, "$")
-      .replace(/\\/g, "")
+    let html = text.trim();
 
-      // Headings
-      .replace(/^### (.*?)$/gm, "<h3>$1</h3>")
-      .replace(/^#### (.*?)$/gm, "<h4>$1</h4>")
+    // 1. Loại bỏ các ký tự code block markdown ```html hoặc ``` nếu AI bao quanh câu trả lời HTML
+    const htmlBlockRegex = /^```html\s*([\s\S]*?)\s*```$/i;
+    const genericBlockRegex = /^```(?:xml|html)?\s*([\s\S]*?)\s*```$/i;
+    
+    if (htmlBlockRegex.test(html)) {
+      html = html.replace(htmlBlockRegex, '$1');
+    } else if (genericBlockRegex.test(html)) {
+      html = html.replace(genericBlockRegex, '$1');
+    }
+    
+    html = html.trim();
 
-      // Bold/Italic
-      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\*(.*?)\*/g, "<em>$1</em>")
+    // Hỗ trợ parse các thẻ Markdown cơ bản sang HTML
+    const parseMarkdown = (txt: string): string => {
+      let temp = txt;
+      
+      // Convert headings
+      temp = temp.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
+      temp = temp.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
+      temp = temp.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
+      
+      // Convert list items
+      const lines = temp.split('\n');
+      let inList = false;
+      const processedLines: string[] = [];
+      for (const line of lines) {
+        const listMatch = line.match(/^(\s*)[\*\-]\s+(.*)$/);
+        if (listMatch) {
+          if (!inList) {
+            processedLines.push('<ul>');
+            inList = true;
+          }
+          processedLines.push(`<li>${listMatch[2]}</li>`);
+        } else {
+          if (inList) {
+            processedLines.push('</ul>');
+            inList = false;
+          }
+          processedLines.push(line);
+        }
+      }
+      if (inList) {
+        processedLines.push('</ul>');
+      }
+      temp = processedLines.join('\n');
 
-      // List items (temporary tag)
-      .replace(/^\* (.*?)$/gm, "<temp-li>$1</temp-li>")
+      // Convert bold
+      temp = temp.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      
+      // Convert italic
+      temp = temp.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      
+      return temp;
+    };
 
-      // Tables
-      .replace(/^\|(.+)\|$/gm, (match, content) => {
-        const cells = content.split('|').map((c: string) => c.trim());
-        if (cells.every((c: string) => c.includes('---'))) return "";
-        return `<temp-tr>${cells.map((c: string) => `<td>${c}</td>`).join('')}</temp-tr>`;
-      })
+    html = parseMarkdown(html);
 
-      // Line breaks for remaining newlines
-      .replace(/\n/g, "<br>");
+    // 2. Tự động bao bọc tất cả các thẻ <table> bằng container cuộn ngang (.table-container) để hỗ trợ responsive tốt hơn
+    html = html.replace(/<table([^>]*)>([\s\S]*?)<\/table>/gi, '<div class="table-container"><table$1>$2</table></div>');
 
-    // Grouping list items into <ul>
-    html = html.replace(/(<temp-li>.*?<\/temp-li>(<br>|\s)*)+/gms, (match) => {
-      return `<ul>${match.replace(/<temp-li>/g, "<li>").replace(/<\/temp-li>/g, "</li>").replace(/<br>/g, "")}</ul>`;
-    });
+    // 3. Xử lý ký tự xuống dòng (\n) tránh sinh ra thẻ <br> lỗi trong các khối HTML như table, list
+    let cleanedHtml = html.replace(/\n/g, "<br>");
+    
+    cleanedHtml = cleanedHtml
+      // Xóa <br> ngay sau thẻ mở block
+      .replace(/<(table|thead|tbody|tfoot|tr|th|td|ul|ol|li|div|p|h1|h2|h3|h4|h5|h6)([^>]*)><br>/gi, "<$1$2>")
+      // Xóa <br> ngay trước thẻ đóng block
+      .replace(/<br><\/(table|thead|tbody|tfoot|tr|th|td|ul|ol|li|div|p|h1|h2|h3|h4|h5|h6)>/gi, "</$1>")
+      // Xóa <br> giữa thẻ đóng và thẻ tiếp theo
+      .replace(/(<\/tr>|<\/td>|<\/th>|<\/thead>|<\/tbody>|<\/tfoot>|<\/table>|<\/ul>|<\/ol>|<\/li>|<\/p>|<\/div>)<br>/gi, "$1")
+      // Xóa <br> trước các thẻ mở block
+      .replace(/<br>(<table|<div|<tr|<td|<th|<thead|<tbody|<tfoot|<ul|<ol|<li|<p|<h1|<h2|<h3|<h4|<h5|<h6)/gi, "$1")
+      // Rút gọn các thẻ <br> liên tiếp quá nhiều
+      .replace(/(<br>\s*){3,}/g, "<br><br>");
 
-    // Grouping table rows into <table>
-    html = html.replace(/(<temp-tr>.*?<\/temp-tr>(<br>|\s)*)+/gms, (match) => {
-      return `<table>${match.replace(/<temp-tr>/g, "<tr>").replace(/<\/temp-tr>/g, "</tr>").replace(/<br>/g, "")}</table>`;
-    });
-
-    // Final clean up: Remove <br> next to block tags
-    html = html
-      .replace(/<br><(h3|h4|ul|table)/g, "<$1")
-      .replace(/<\/(h3|h4|ul|table)><br>/g, "</$1>")
-      .replace(/<br><\/(ul|table)>/g, "</$1>");
-
-    return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: html }} />;
+    return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} />;
   };
 
   return (
@@ -609,11 +681,7 @@ export default function Home() {
                   <input
                     type="text"
                     value={displayRevenue}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/\D/g, "");
-                      setRevenue(raw);
-                      setDisplayRevenue(raw.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-                    }}
+                    onChange={(e) => handleNumberChange(e, setRevenue, setDisplayRevenue)}
                     onBlur={() => {
                       if (revenue) {
                         setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
@@ -634,11 +702,7 @@ export default function Home() {
                     <input
                       type="text"
                       value={displayExpenses}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/\D/g, "");
-                        setExpenses(raw);
-                        setDisplayExpenses(raw.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-                      }}
+                      onChange={(e) => handleNumberChange(e, setExpenses, setDisplayExpenses)}
                       onBlur={() => {
                         if (expenses) {
                           setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
