@@ -421,7 +421,27 @@ export default function Home() {
       const lines = temp.split('\n');
       let inList = false;
       const processedLines: string[] = [];
+      let inTable = false;
+      
       for (const line of lines) {
+        // Table parsing
+        if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
+          if (!inTable) {
+            processedLines.push('<table>');
+            inTable = true;
+          }
+          // Check if it's a separator row like |---|---|
+          if (/^\|[\s\-\|:]+\|$/.test(line.trim())) {
+            continue; // Skip separator row in HTML
+          }
+          const cells = line.trim().split('|').filter((c, i, arr) => !(i === 0 || i === arr.length - 1)).map(c => c.trim());
+          processedLines.push('<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>');
+          continue;
+        } else if (inTable) {
+          processedLines.push('</table>');
+          inTable = false;
+        }
+
         const listMatch = line.match(/^(\s*)[\*\-]\s+(.*)$/);
         if (listMatch) {
           if (!inList) {
@@ -437,9 +457,9 @@ export default function Home() {
           processedLines.push(line);
         }
       }
-      if (inList) {
-        processedLines.push('</ul>');
-      }
+      if (inList) processedLines.push('</ul>');
+      if (inTable) processedLines.push('</table>');
+      
       temp = processedLines.join('\n');
 
       // Convert bold
@@ -447,6 +467,11 @@ export default function Home() {
       
       // Convert italic
       temp = temp.replace(/\*(.*?)\*/g, '<em>$1</em>');
+      
+      // Cleanup empty headers in tables, make first row th
+      temp = temp.replace(/<table>\n<tr>(.*?)<\/tr>/g, (match, p1) => {
+        return '<table>\n<thead><tr>' + p1.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>') + '</tr></thead>\n<tbody>';
+      }).replace(/<\/table>/g, '</tbody>\n</table>');
       
       return temp;
     };
