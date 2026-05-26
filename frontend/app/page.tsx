@@ -145,27 +145,24 @@ export default function Home() {
   }, [messages]);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.lang = "vi-VN";
-        recognition.continuous = false;
-        recognition.interimResults = false;
+    if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      recognition.lang = "vi-VN";
+      recognition.continuous = false;
+      recognition.interimResults = false;
 
-        recognition.onresult = (event: any) => {
-          const transcript = event.results[0][0].transcript;
-          setInputMessage(transcript);
-        };
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputMessage(transcript);
+        handleSendMessage(transcript);
+      };
 
-        recognition.onend = () => {
-          setIsRecording(false);
-        };
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
 
-        recognitionRef.current = recognition;
-      } else {
-        console.warn("Trình duyệt không hỗ trợ Web Speech API");
-      }
+      recognitionRef.current = recognition;
     }
   }, []);
 
@@ -269,9 +266,10 @@ export default function Home() {
       }
 
       if (data.error) {
+        const errorText = data.error.includes("Tin nhắn bị từ chối") ? data.error : `Lỗi: ${data.error}`;
         setMessages((prev) => [
           ...prev,
-          { id: Date.now().toString(), text: `Lỗi: ${data.error}`, isUser: false },
+          { id: Date.now().toString(), text: errorText, isUser: false },
         ]);
       } else {
         setMessages((prev) => [
@@ -494,7 +492,7 @@ export default function Home() {
       // Xóa <br> trước các thẻ mở block
       .replace(/<br>(<table|<div|<tr|<td|<th|<thead|<tbody|<tfoot|<ul|<ol|<li|<p|<h1|<h2|<h3|<h4|<h5|<h6)/gi, "$1")
       // Rút gọn các thẻ <br> liên tiếp quá nhiều
-      .replace(/(<br>\s*){3,}/g, "<br><br>");
+      .replace(/(<br>\s*){2,}/g, "<br>");
 
     return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} />;
   };

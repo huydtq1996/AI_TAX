@@ -19,15 +19,21 @@ class GeminiService:
     def generate_response(self, prompt, context="", file_path=None):
         if not self.client:
             return "Lỗi: Chưa cấu hình GEMINI_API_KEY."
-            
+
+        # Sanitize prompt to prevent XML injection
+        safe_prompt = prompt.replace("<", "&lt;").replace(">", "&gt;") if prompt else ""
+        
         full_prompt = f"""
         Ngữ cảnh pháp lý (Cơ sở tri thức):
         {context}
         
-        Câu hỏi của người dùng:
-        {prompt}
+        Bạn là một chuyên gia tư vấn thuế tại Việt Nam. Hãy trả lời câu hỏi của người dùng nằm bên trong thẻ <user_input> dưới đây theo các nguyên tắc nghiêm ngặt sau:
         
-        Bạn là một chuyên gia tư vấn thuế tại Việt Nam. Hãy trả lời câu hỏi của người dùng theo các nguyên tắc nghiêm ngặt sau:
+        <user_input>
+        {safe_prompt}
+        </user_input>
+        
+        CÁC NGUYÊN TẮC BẮT BUỘC:
         0. Nếu câu hỏi không liên quan đến luật/nghị định/thông tư về thuế, kế toán hoặc doanh nghiệp, hãy từ chối lịch sự: "Đây là chatbot về thuế!".
         1. Tuyệt đối KHÔNG tự suy diễn hoặc bịa đặt nội dung. Chỉ trả lời dựa trên 'Ngữ cảnh pháp lý' được cung cấp.
         2. QUY TẮC ÁP DỤNG LUẬT MỚI: Nếu ngữ cảnh có nhiều văn bản cùng loại (Ví dụ: Nghị định 68/2026 và Nghị định 141/2026), PHẢI áp dụng quy định của văn bản có năm và số hiệu lớn hơn (văn bản mới nhất).

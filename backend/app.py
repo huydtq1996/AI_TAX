@@ -46,7 +46,7 @@ def chat():
     # 1. Guard Service - Chống Prompt Injection
     if not guard_service.check_input(user_message):
         return jsonify({
-            "error": "Câu hỏi của bạn chứa nội dung không hợp lệ hoặc vi phạm chính sách."
+            "error": "Tin nhắn bị từ chối: Phát hiện nội dung không hợp lệ"
         }), 403
         
     # Tạo Session nếu chưa có
@@ -91,6 +91,11 @@ def chat():
     is_error = ai_response.startswith("Lỗi") or "Hết quota" in ai_response
     if is_error:
         sources = []
+    else:
+        # 4.1 Guard Service - Kiểm tra phản hồi (Bảo mật & Phòng thủ)
+        if not guard_service.check_response(ai_response):
+            ai_response = "Xin lỗi, yêu cầu của bạn không thể thực hiện được vì lý do bảo mật hệ thống."
+            sources = []
         
     # Lưu tin nhắn của AI
     if user_token and session_id:
