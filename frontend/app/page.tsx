@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, FormEvent, ChangeEvent } from "react";
 import { supabase } from '../utils/supabase';
+import { marked } from "marked";
 
 type Message = {
   id: string;
@@ -45,70 +46,106 @@ export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userToken, setUserToken] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [chatSessions, setChatSessions] = useState<any[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [showFiles, setShowFiles] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
+  // State xác thực người dùng
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authView, setAuthView] = useState<'login' | 'signup' | 'forgot_password' | 'reset_password'>('login');
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authLoading, setAuthLoading] = useState(false);
+
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Đăng nhập ẩn danh và tải danh sách chat
+  // Lắng nghe sự thay đổi trạng thái đăng nhập
   useEffect(() => {
-    const initAuth = async () => {
-      let token = null;
+    const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        token = session.access_token;
-      } else {
-        const { data } = await supabase.auth.signInAnonymously();
-        if (data?.session) token = data.session.access_token;
-      }
-
-      setUserToken(token);
-
-      // Load lịch sử chat
-      const { data: sessions } = await supabase
-        .from('chat_sessions')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (sessions && sessions.length > 0) {
-        setChatSessions(sessions);
-        loadSession(sessions[0].id); // Tự động load phiên gần nhất
-      } else {
-        setMessages([{ id: "1", text: "Xin chào! Tôi là AI Trợ lý Thuế. Hãy cung cấp doanh thu và ngành nghề, hoặc đính kèm ảnh tờ khai/hóa đơn để tôi tư vấn.", isUser: false }]);
+        setUserToken(session.access_token);
+        setUserEmail(session.user.email || null);
+        loadChatSessions(session.access_token);
       }
     };
-    initAuth();
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setAuthView('reset_password');
+        setUserToken(session?.access_token || null);
+        setUserEmail(session?.user?.email || null);
+      } else if (session) {
+        setUserToken(session.access_token);
+        setUserEmail(session.user.email || null);
+        loadChatSessions(session.access_token);
+      } else {
+        setUserToken(null);
+        setUserEmail(null);
+        setChatSessions([]);
+        setCurrentSessionId(null);
+        setTaxData(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Tải nội dung của 1 phiên chat cụ thể
-  const loadSession = async (sessionId: string) => {
+  // Tải danh sách các phiên chat từ backend proxy
+  const loadChatSessions = async (token: string) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/sessions?supabase_token=${token}`);
+      if (response.ok) {
+        const sessions = await response.json();
+        if (sessions && sessions.length > 0) {
+          setChatSessions(sessions);
+          // Tự động load phiên gần nhất
+          loadSession(sessions[0].id, token);
+        } else {
+          setMessages([{ id: "1", text: "Xin chào! Tôi là AI Trợ lý Thuế. Hãy cung cấp doanh thu và ngành nghề, hoặc đính kèm ảnh tờ khai/hóa đơn để tôi tư vấn.", isUser: false }]);
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi tải danh sách cuộc trò chuyện:", err);
+    }
+  };
+
+  // Tải và giải mã nội dung của 1 phiên chat từ backend proxy
+  const loadSession = async (sessionId: string, token: string | null = userToken) => {
+    if (!token) return;
     setCurrentSessionId(sessionId);
-    const { data: msgs } = await supabase
-      .from('chat_messages')
-      .select('*')
-      .eq('session_id', sessionId)
-      .order('created_at', { ascending: true });
+    try {
+      const response = await fetch(`http://localhost:5000/api/sessions/${sessionId}/messages?supabase_token=${token}`);
+      if (response.ok) {
+        const msgs = await response.json();
+        if (msgs && msgs.length > 0) {
+          setMessages(msgs.map((m: any) => ({
+            id: m.id,
+            text: m.content,
+            isUser: m.role === 'user',
+            fileName: m.file_name,
+            fileType: m.file_type,
+            sources: m.tax_result_snapshot?.sources || m.sources
+          })));
 
-    if (msgs && msgs.length > 0) {
-      setMessages(msgs.map((m: any) => ({
-        id: m.id,
-        text: m.content,
-        isUser: m.role === 'user',
-        fileName: m.file_name,
-        fileType: m.file_type,
-        sources: m.sources
-      })));
-
-      // Nếu có bảng tính thuế từ tin nhắn cuối cùng, hiển thị lại
-      const lastBotMsg = msgs.reverse().find((m: any) => m.role === 'assistant' && m.tax_result_snapshot);
-      if (lastBotMsg) setTaxData(lastBotMsg.tax_result_snapshot);
-      else setTaxData(null);
-    } else {
-      setMessages([{ id: "1", text: "Xin chào! Hãy bắt đầu hỏi đáp về thuế.", isUser: false }]);
+          // Bản sao mảng để tránh đảo ngược mảng chính
+          const reverseMsgs = [...msgs].reverse();
+          const lastBotMsg = reverseMsgs.find((m: any) => m.role === 'assistant' && m.tax_result_snapshot);
+          if (lastBotMsg) setTaxData(lastBotMsg.tax_result_snapshot?.tax_snapshot || lastBotMsg.tax_result_snapshot);
+          else setTaxData(null);
+        } else {
+          setMessages([{ id: "1", text: "Xin chào! Bạn cần tư vấn về vấn đề gì?", isUser: false }]);
+        }
+      }
+    } catch (err) {
+      console.error("Lỗi tải nội dung cuộc trò chuyện:", err);
     }
   };
 
@@ -118,23 +155,110 @@ export default function Home() {
     setTaxData(null);
   };
 
+  // Xóa phiên chat thông qua backend proxy
   const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
     if (!window.confirm('Bạn có chắc chắn muốn xóa cuộc trò chuyện này?')) return;
+    if (!userToken) return;
 
-    // Xóa từ Database
-    await supabase.from('chat_sessions').delete().eq('id', sessionId);
+    try {
+      const response = await fetch(`http://localhost:5000/api/sessions/${sessionId}?supabase_token=${userToken}`, {
+        method: 'DELETE'
+      });
+      if (response.ok) {
+        const newSessions = chatSessions.filter(s => s.id !== sessionId);
+        setChatSessions(newSessions);
 
-    // Xóa khỏi UI
-    const newSessions = chatSessions.filter(s => s.id !== sessionId);
-    setChatSessions(newSessions);
-
-    if (currentSessionId === sessionId) {
-      if (newSessions.length > 0) {
-        loadSession(newSessions[0].id);
-      } else {
-        createNewSession();
+        if (currentSessionId === sessionId) {
+          if (newSessions.length > 0) {
+            loadSession(newSessions[0].id, userToken);
+          } else {
+            createNewSession();
+          }
+        }
       }
+    } catch (err) {
+      console.error("Lỗi xóa cuộc trò chuyện:", err);
+    }
+  };
+
+  // Các hàm xác thực bằng email/password qua Supabase Auth
+  const handleSignUp = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: authEmail,
+        password: authPassword
+      });
+      if (error) throw error;
+      alert("Đăng ký thành công! Vui lòng đăng nhập hoặc kiểm tra email xác nhận nếu có.");
+      setAuthView('login');
+    } catch (err: any) {
+      setAuthError(err.message || "Lỗi đăng ký");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignIn = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: authEmail,
+        password: authPassword
+      });
+      if (error) throw error;
+    } catch (err: any) {
+      setAuthError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản/mật khẩu.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+        redirectTo: window.location.origin
+      });
+      if (error) throw error;
+      alert("Yêu cầu đã gửi! Vui lòng kiểm tra hòm thư Email để nhận liên kết đặt lại mật khẩu.");
+      setAuthView('login');
+    } catch (err: any) {
+      setAuthError(err.message || "Lỗi gửi yêu cầu khôi phục mật khẩu");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: authPassword
+      });
+      if (error) throw error;
+      alert("Đặt lại mật khẩu thành công! Bạn có thể sử dụng mật khẩu mới để đăng nhập.");
+      await supabase.auth.signOut();
+      setAuthView('login');
+    } catch (err: any) {
+      setAuthError(err.message || "Lỗi đặt lại mật khẩu");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
+      await supabase.auth.signOut();
     }
   };
 
@@ -406,101 +530,155 @@ export default function Home() {
     
     html = html.trim();
 
-    // Hỗ trợ parse các thẻ Markdown cơ bản sang HTML
-    const parseMarkdown = (txt: string): string => {
-      let temp = txt;
-      
-      // Convert headings
-      temp = temp.replace(/^### (.*?)$/gm, '<h3>$1</h3>');
-      temp = temp.replace(/^## (.*?)$/gm, '<h2>$1</h2>');
-      temp = temp.replace(/^# (.*?)$/gm, '<h1>$1</h1>');
-      
-      // Convert list items
-      const lines = temp.split('\n');
-      let inList = false;
-      const processedLines: string[] = [];
-      let inTable = false;
-      
-      for (const line of lines) {
-        // Table parsing
-        if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-          if (!inTable) {
-            processedLines.push('<table>');
-            inTable = true;
-          }
-          // Check if it's a separator row like |---|---|
-          if (/^\|[\s\-\|:]+\|$/.test(line.trim())) {
-            continue; // Skip separator row in HTML
-          }
-          const cells = line.trim().split('|').filter((c, i, arr) => !(i === 0 || i === arr.length - 1)).map(c => c.trim());
-          processedLines.push('<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>');
-          continue;
-        } else if (inTable) {
-          processedLines.push('</table>');
-          inTable = false;
-        }
-
-        const listMatch = line.match(/^(\s*)[\*\-]\s+(.*)$/);
-        if (listMatch) {
-          if (!inList) {
-            processedLines.push('<ul>');
-            inList = true;
-          }
-          processedLines.push(`<li>${listMatch[2]}</li>`);
-        } else {
-          if (inList) {
-            processedLines.push('</ul>');
-            inList = false;
-          }
-          processedLines.push(line);
-        }
-      }
-      if (inList) processedLines.push('</ul>');
-      if (inTable) processedLines.push('</table>');
-      
-      temp = processedLines.join('\n');
-
-      // Convert bold
-      temp = temp.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-      
-      // Convert italic
-      temp = temp.replace(/\*(.*?)\*/g, '<em>$1</em>');
-      
-      // Cleanup empty headers in tables, make first row th
-      temp = temp.replace(/<table>\n<tr>(.*?)<\/tr>/g, (match, p1) => {
-        return '<table>\n<thead><tr>' + p1.replace(/<td>/g, '<th>').replace(/<\/td>/g, '</th>') + '</tr></thead>\n<tbody>';
-      }).replace(/<\/table>/g, '</tbody>\n</table>');
-      
-      return temp;
-    };
-
-    html = parseMarkdown(html);
+    // Parse markdown using marked library
+    try {
+      html = marked.parse(html, { breaks: true, gfm: true, async: false }) as string;
+    } catch (err) {
+      console.error("Lỗi parse markdown bằng marked:", err);
+    }
 
     // 2. Tự động bao bọc tất cả các thẻ <table> bằng container cuộn ngang (.table-container) để hỗ trợ responsive tốt hơn
     html = html.replace(/<table([^>]*)>([\s\S]*?)<\/table>/gi, '<div class="table-container"><table$1>$2</table></div>');
 
-    // 3. Xử lý ký tự xuống dòng (\n) tránh sinh ra thẻ <br> lỗi trong các khối HTML như table, list
-    let cleanedHtml = html.replace(/\n/g, "<br>");
-    
-    cleanedHtml = cleanedHtml
-      // Xóa <br> ngay sau thẻ mở block
-      .replace(/<(table|thead|tbody|tfoot|tr|th|td|ul|ol|li|div|p|h1|h2|h3|h4|h5|h6)([^>]*)><br>/gi, "<$1$2>")
-      // Xóa <br> ngay trước thẻ đóng block
-      .replace(/<br><\/(table|thead|tbody|tfoot|tr|th|td|ul|ol|li|div|p|h1|h2|h3|h4|h5|h6)>/gi, "</$1>")
-      // Xóa <br> giữa thẻ đóng và thẻ tiếp theo
-      .replace(/(<\/tr>|<\/td>|<\/th>|<\/thead>|<\/tbody>|<\/tfoot>|<\/table>|<\/ul>|<\/ol>|<\/li>|<\/p>|<\/div>)<br>/gi, "$1")
-      // Xóa <br> trước các thẻ mở block
-      .replace(/<br>(<table|<div|<tr|<td|<th|<thead|<tbody|<tfoot|<ul|<ol|<li|<p|<h1|<h2|<h3|<h4|<h5|<h6)/gi, "$1")
-      // Rút gọn các thẻ <br> liên tiếp quá nhiều
-      .replace(/(<br>\s*){2,}/g, "<br>");
-
-    return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: cleanedHtml }} />;
+    return <div className="formatted-content" dangerouslySetInnerHTML={{ __html: html }} />;
   };
+
+  if (!userToken || authView === 'reset_password') {
+    return (
+      <div className="auth-container">
+        <div className="auth-card">
+          <h2>
+            <i className="fa-solid fa-robot"></i>{' '}
+            {authView === 'signup' && 'Đăng ký tài khoản'}
+            {authView === 'login' && 'Đăng nhập hệ thống'}
+            {authView === 'forgot_password' && 'Khôi phục mật khẩu'}
+            {authView === 'reset_password' && 'Đặt lại mật khẩu mới'}
+          </h2>
+          <p>
+            {authView === 'forgot_password'
+              ? 'Nhập email để nhận liên kết khôi phục mật khẩu'
+              : authView === 'reset_password'
+              ? 'Nhập mật khẩu mới cho tài khoản của bạn'
+              : 'Hệ thống hỗ trợ AI khai báo & lập kế hoạch thuế'}
+          </p>
+
+          {authError && (
+            <div className="auth-error-alert">
+              <i className="fa-solid fa-triangle-exclamation"></i> {authError}
+            </div>
+          )}
+
+          {authView === 'forgot_password' && (
+            <form onSubmit={handleForgotPassword} className="auth-form">
+              <div className="form-group">
+                <label>Địa chỉ Email</label>
+                <input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" className="auth-submit-btn" disabled={authLoading}>
+                {authLoading ? 'Đang gửi...' : 'Gửi liên kết khôi phục'}
+              </button>
+              <div className="auth-toggle" style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <button type="button" onClick={() => { setAuthView('login'); setAuthError(null); }}>
+                  Quay lại đăng nhập
+                </button>
+              </div>
+            </form>
+          )}
+
+          {authView === 'reset_password' && (
+            <form onSubmit={handleResetPassword} className="auth-form">
+              <div className="form-group">
+                <label>Mật khẩu mới</label>
+                <input
+                  type="password"
+                  placeholder="Mật khẩu mới (tối thiểu 6 ký tự)"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  required
+                />
+              </div>
+              <button type="submit" className="auth-submit-btn" disabled={authLoading}>
+                {authLoading ? 'Đang lưu...' : 'Đặt lại mật khẩu'}
+              </button>
+            </form>
+          )}
+
+          {(authView === 'login' || authView === 'signup') && (
+            <form onSubmit={authView === 'signup' ? handleSignUp : handleSignIn} className="auth-form">
+              <div className="form-group">
+                <label>Địa chỉ Email</label>
+                <input
+                  type="email"
+                  placeholder="email@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Mật khẩu</label>
+                <input
+                  type="password"
+                  placeholder="••••••••"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  required
+                />
+              </div>
+
+              <button type="submit" className="auth-submit-btn" disabled={authLoading}>
+                {authLoading ? 'Đang xử lý...' : authView === 'signup' ? 'Đăng ký' : 'Đăng nhập'}
+              </button>
+
+              {authView === 'login' && (
+                <div style={{ textAlign: 'right', marginTop: '-5px' }}>
+                  <button
+                    type="button"
+                    onClick={() => { setAuthView('forgot_password'); setAuthError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Quên mật khẩu?
+                  </button>
+                </div>
+              )}
+            </form>
+          )}
+
+          {(authView === 'login' || authView === 'signup') && (
+            <div className="auth-toggle">
+              {authView === 'signup' ? (
+                <>
+                  Đã có tài khoản?
+                  <button type="button" onClick={() => { setAuthView('login'); setAuthError(null); }}>
+                    Đăng nhập ngay
+                  </button>
+                </>
+              ) : (
+                <>
+                  Chưa có tài khoản?
+                  <button type="button" onClick={() => { setAuthView('signup'); setAuthError(null); }}>
+                    Đăng ký ngay
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="layout" style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
       {/* SIDEBAR TƯƠNG TỰ GEMINI */}
       <div className="sidebar" style={{ width: '280px', backgroundColor: '#f0f4f9', padding: '15px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0', overflowY: 'hidden' }}>
+
         <button
           onClick={createNewSession}
           style={{ backgroundColor: '#fff', border: 'none', borderRadius: '20px', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '14px' }}>
@@ -528,15 +706,39 @@ export default function Home() {
           </ul>
         </div>
 
-        {/* Nút quản lý file ở cuối sidebar */}
-        <div style={{ marginTop: 'auto', padding: '10px 0', borderTop: '1px solid #e0e0e0' }}>
+        {/* Phần cuối Sidebar: Quản lý tệp & User Profile */}
+        <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #e0e0e0', paddingTop: '15px' }}>
           <button
             onClick={() => { setShowFiles(true); fetchFiles(); }}
-            style={{ width: '100%', padding: '12px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#444', transition: 'background 0.2s' }}
+            style={{ width: '100%', padding: '10px 12px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#444', transition: 'background 0.2s' }}
           >
-            <i className="fa-solid fa-folder-open" style={{ fontSize: '18px', color: '#5f6368' }}></i>
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>Quản lý tệp tin</span>
+            <i className="fa-solid fa-folder-open" style={{ fontSize: '16px', color: '#5f6368' }}></i>
+            <span style={{ fontSize: '13px', fontWeight: 500 }}>Quản lý tệp tin</span>
           </button>
+
+          {/* User Profile Card */}
+          <div className="user-profile-card">
+            {/* Avatar */}
+            <div className="user-avatar">
+              {userEmail ? userEmail[0] : 'U'}
+            </div>
+            
+            {/* Email */}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="user-email-text" title={userEmail || ""}>
+                {userEmail}
+              </div>
+            </div>
+            
+            {/* Logout button */}
+            <button
+              onClick={handleSignOut}
+              title="Đăng xuất"
+              className="user-logout-btn"
+            >
+              <i className="fa-solid fa-right-from-bracket" style={{ fontSize: '14px' }}></i>
+            </button>
+          </div>
         </div>
       </div>
 

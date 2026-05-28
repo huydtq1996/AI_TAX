@@ -1,11 +1,13 @@
 import os
 import requests
 import re
+from services.encryption_service import EncryptionService
 
 class SupabaseService:
     def __init__(self):
         self.url = os.getenv("SUPABASE_URL")
         self.key = os.getenv("SUPABASE_ANON_KEY")
+        self.encryption_service = EncryptionService()
         if not self.url or not self.key:
             print("Warning: SUPABASE_URL or SUPABASE_ANON_KEY is not set.")
 
@@ -52,7 +54,7 @@ class SupabaseService:
         data = {
             "session_id": session_id,
             "role": role,
-            "content": content
+            "content": self.encryption_service.encrypt_text(content)
         }
         
         if file_name:
@@ -157,13 +159,7 @@ class SupabaseService:
                 filtered_results.sort(key=get_sort_key, reverse=True)
 
                 # --- XÂY DỰNG CONTEXT CHO AI ---
-                context = (
-                    "LƯU Ý QUAN TRỌNG DÀNH CHO AI (OVERRIDE KIẾN THỨC MẶC ĐỊNH):\n"
-                    "- Dưới đây là cơ sở dữ liệu pháp luật. Bạn CHỈ ĐƯỢC dựa vào số liệu ở đây.\n"
-                    "- ĐẶC BIỆT VỀ HIỆU LỰC PHÁP LÝ TẠI VIỆT NAM: Bạn KHÔNG ĐƯỢC tự động lập luận rằng 'Luật có giá trị pháp lý cao hơn Nghị định/Thông tư' trong trường hợp này. Trong thực tiễn, nếu một Nghị định/Nghị quyết có năm/ngày ban hành MỚI HƠN quy định mức doanh thu/thuế khác với Luật gốc, BẠN PHẢI áp dụng số liệu của văn bản MỚI HƠN đó.\n"
-                    "- QUY TẮC BẮT BUỘC: Văn bản nào ban hành SAU (năm lớn hơn, hoặc ngày mới hơn) sẽ có giá trị áp dụng ưu tiên nhất, BẤT KỂ loại văn bản là gì.\n"
-                    "- Nếu có phần 'THÔNG TIN SỬA ĐỔI/BỔ SUNG', BẠN PHẢI đối chiếu và xác nhận sự thay đổi (VD: Ngưỡng cũ là 500 triệu, ngưỡng mới là 1 tỷ) trong câu trả lời.\n\n"
-                )
+                context = "Dưới đây là cơ sở dữ liệu pháp luật (Ngữ cảnh pháp lý) được trích xuất từ hệ thống:\n\n"
                 
                 sources = []
                 # Đưa các đoạn gốc vào Context
@@ -174,7 +170,18 @@ class SupabaseService:
                     article = meta.get('article', 'N/A')
                     section = meta.get('section', 'N/A')
                     
-                    if law_name not in sources: sources.append(law_name)
+                    source_parts = []
+                    if article and article != 'N/A':
+                        source_parts.append(f"Điều {article}")
+                    if section and section != 'N/A':
+                        source_parts.append(f"Khoản {section}")
+                    
+                    source_label = law_name
+                    if source_parts:
+                        source_label += f" ({', '.join(source_parts)})"
+                    
+                    if source_label not in sources: 
+                        sources.append(source_label)
                     
                     amended_info = ""
                     if row.get('amended_by'):
@@ -188,7 +195,21 @@ class SupabaseService:
                     for am_doc in amendment_docs:
                         meta = am_doc.get('metadata', {})
                         law_name = meta.get('law_name', 'Văn bản mới')
-                        if law_name not in sources: sources.append(law_name)
+                        article = meta.get('article', 'N/A')
+                        section = meta.get('section', 'N/A')
+                        
+                        source_parts = []
+                        if article and article != 'N/A':
+                            source_parts.append(f"Điều {article}")
+                        if section and section != 'N/A':
+                            source_parts.append(f"Khoản {section}")
+                        
+                        source_label = law_name
+                        if source_parts:
+                            source_label += f" ({', '.join(source_parts)})"
+                        
+                        if source_label not in sources: 
+                            sources.append(source_label)
                         context += f"--- [{law_name}] (Điều: {meta.get('article', 'N/A')}, Khoản: {meta.get('section', 'N/A')}) ---\n"
                         context += f"Nội dung sửa đổi: {am_doc.get('content', '')}\n\n"
 
@@ -292,3 +313,70 @@ class SupabaseService:
                 print(f"Error checking DB for cross-updates: {e}")
                 
         return results, amendment_docs
+
+    def get_sessions(self, user_token):
+        if not self.url or not self.key or not user_token:
+            return []
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/chat_sessions?order=created_at.desc", 
+                headers=headers
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error fetching sessions: {response.text}")
+        except Exception as e:
+            print(f"Exception fetching sessions: {e}")
+        return []
+
+    def get_messages(self, session_id, user_token):
+        if not self.url or not self.key or not session_id or not user_token:
+            return []
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/chat_messages?session_id=eq.{session_id}&order=created_at.asc", 
+                headers=headers
+            )
+            if response.status_code == 200:
+                messages = response.json()
+                for m in messages:
+                    if "content" in m:
+                        m["content"] = self.encryption_service.decrypt_text(m["content"])
+                return messages
+            else:
+                print(f"Error fetching messages: {response.text}")
+        except Exception as e:
+            print(f"Exception fetching messages: {e}")
+        return []
+
+    def delete_session(self, session_id, user_token):
+        if not self.url or not self.key or not session_id or not user_token:
+            return False
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.delete(
+                f"{self.url}/rest/v1/chat_sessions?id=eq.{session_id}", 
+                headers=headers
+            )
+            if response.status_code in (200, 204):
+                return True
+            else:
+                print(f"Error deleting session: {response.text}")
+        except Exception as e:
+            print(f"Exception deleting session: {e}")
+        return False

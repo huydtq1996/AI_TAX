@@ -7,6 +7,7 @@ from services.gemini_service import GeminiService
 from services.supabase_service import SupabaseService
 from services.tax_calculator import TaxCalculator
 from services.guard_service import GuardService
+from services.encryption_service import EncryptionService
 
 # Load environment variables
 load_dotenv()
@@ -19,6 +20,7 @@ gemini_service = GeminiService()
 supabase_service = SupabaseService()
 tax_calculator = TaxCalculator()
 guard_service = GuardService()
+encryption_service = EncryptionService()
 
 # Đảm bảo thư mục uploads tồn tại
 os.makedirs("uploads", exist_ok=True)
@@ -64,6 +66,8 @@ def chat():
         file_type = file_name.split('.')[-1].upper() if '.' in file_name else "FILE"
         file_path = os.path.join("uploads", file_name)
         file.save(file_path)
+        # Mã hóa tệp tin ngay lập tức trên đĩa
+        encryption_service.encrypt_file(file_path)
 
     # 3. Lưu tin nhắn của User
     if user_token and session_id:
@@ -133,8 +137,78 @@ def list_files():
 
 @app.route('/api/files/<filename>', methods=['GET'])
 def download_file(filename):
-    from flask import send_from_directory
-    return send_from_directory("uploads", filename)
+    from flask import send_file
+    import io
+    import mimetypes
+    
+    file_path = os.path.join("uploads", filename)
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File not found"}), 404
+        
+    try:
+        decrypted_bytes = encryption_service.decrypt_file(file_path)
+        
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = "application/octet-stream"
+            
+        return send_file(
+            io.BytesIO(decrypted_bytes),
+            mimetype=mime_type,
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        print(f"Lỗi giải mã file tải về: {e}")
+        return jsonify({"error": "Không thể giải mã tệp tin"}), 500
+
+@app.route('/api/sessions', methods=['GET'])
+def get_sessions():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    sessions = supabase_service.get_sessions(user_token)
+    return jsonify(sessions)
+
+@app.route('/api/sessions/<session_id>/messages', methods=['GET'])
+def get_messages(session_id):
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    messages = supabase_service.get_messages(session_id, user_token)
+    return jsonify(messages)
+
+@app.route('/api/sessions/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    success = supabase_service.delete_session(session_id, user_token)
+    if success:
+        return jsonify({"message": "Session deleted successfully"})
+    else:
+        return jsonify({"error": "Failed to delete session"}), 500
 
 @app.route('/api/files/<filename>', methods=['DELETE'])
 def delete_file(filename):
