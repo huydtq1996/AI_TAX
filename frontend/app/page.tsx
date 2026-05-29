@@ -43,7 +43,6 @@ export default function Home() {
   const [displayExpenses, setDisplayExpenses] = useState("");
   const [category, setCategory] = useState("hoat_dong_khac");
   const [taxData, setTaxData] = useState<TaxData | null>(null);
-  const [isRecording, setIsRecording] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [userToken, setUserToken] = useState<string | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -60,7 +59,6 @@ export default function Home() {
   const [authLoading, setAuthLoading] = useState(false);
 
   const chatWindowRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Lắng nghe sự thay đổi trạng thái đăng nhập
@@ -198,7 +196,10 @@ export default function Home() {
     try {
       const { data, error } = await supabase.auth.signUp({
         email: authEmail,
-        password: authPassword
+        password: authPassword,
+        options: {
+          emailRedirectTo: window.location.origin
+        }
       });
       if (error) throw error;
       alert("Đăng ký thành công! Vui lòng đăng nhập hoặc kiểm tra email xác nhận nếu có.");
@@ -276,27 +277,7 @@ export default function Home() {
     }
   }, [messages]);
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && "webkitSpeechRecognition" in window) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      const recognition = new SpeechRecognition();
-      recognition.lang = "vi-VN";
-      recognition.continuous = false;
-      recognition.interimResults = false;
 
-      recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInputMessage(transcript);
-        handleSendMessage(transcript);
-      };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
-      recognitionRef.current = recognition;
-    }
-  }, []);
 
   const formatVND = (amount: number) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -529,16 +510,7 @@ export default function Home() {
     handleSendMessage(msg, Number(revenue), category, method, Number(expenses));
   };
 
-  const toggleVoice = () => {
-    if (!recognitionRef.current) return;
 
-    if (isRecording) {
-      recognitionRef.current.stop();
-    } else {
-      recognitionRef.current.start();
-      setIsRecording(true);
-    }
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -894,16 +866,6 @@ export default function Home() {
                 </div>
               )}
               <form onSubmit={onChatSubmit} className="chat-form">
-                <button
-                  type="button"
-                  className="icon-button voice-btn"
-                  onClick={toggleVoice}
-                  title="Nhập bằng giọng nói"
-                  style={{ color: isRecording ? "red" : undefined }}
-                >
-                  <i className={`fa-solid ${isRecording ? "fa-stop" : "fa-microphone"}`}></i>
-                </button>
-
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -919,7 +881,7 @@ export default function Home() {
                   type="text"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder={isRecording ? "Đang nghe..." : "Nhập câu hỏi hoặc gửi ảnh tờ khai/hóa đơn..."}
+                  placeholder="Nhập câu hỏi hoặc gửi ảnh tờ khai/hóa đơn..."
                   autoComplete="off"
                 />
                 <button type="submit" className="primary-button send-btn" disabled={!inputMessage.trim() && !selectedFile}>
