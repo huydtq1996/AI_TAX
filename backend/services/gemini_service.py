@@ -22,7 +22,7 @@ class GeminiService:
         if not self.client:
             return "Lỗi: Chưa cấu hình GEMINI_API_KEY."
 
-        # Sanitize prompt to prevent XML injection
+        # Làm sạch (sanitize) prompt để ngăn chặn XML injection
         safe_prompt = prompt.replace("<", "&lt;").replace(">", "&gt;") if prompt else ""
 
         full_prompt = f"""

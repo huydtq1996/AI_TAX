@@ -62,7 +62,7 @@ class SupabaseService:
         if file_type:
             data["file_type"] = file_type
             
-        # Combine tax_snapshot and sources into JSONB if needed
+        # Kết hợp tax_snapshot và sources thành đối tượng JSONB nếu cần
         tax_result_data = {}
         if tax_snapshot:
             tax_result_data["tax_snapshot"] = tax_snapshot
@@ -380,3 +380,24 @@ class SupabaseService:
         except Exception as e:
             print(f"Exception deleting session: {e}")
         return False
+
+    def get_user_files(self, user_token):
+        if not self.url or not self.key or not user_token:
+            return []
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/chat_messages?file_name=not.is.null&select=file_name,file_type,created_at", 
+                headers=headers
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error fetching user files: {response.text}")
+        except Exception as e:
+            print(f"Exception fetching user files: {e}")
+        return []

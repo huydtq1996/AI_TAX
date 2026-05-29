@@ -1,4 +1,7 @@
 import os
+import time
+from collections import defaultdict
+from functools import wraps
 from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -9,13 +12,46 @@ from services.tax_calculator import TaxCalculator
 from services.guard_service import GuardService
 from services.encryption_service import EncryptionService
 
-# Load environment variables
+# Tải các biến môi trường
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-# Initialize services
+# Lưu trữ lịch sử giới hạn tần suất yêu cầu trong bộ nhớ (RAM): { ip: [mốc_thời_gian1, mốc_thời_gian2, ...] }
+rate_limit_records = defaultdict(list)
+
+def get_client_ip():
+    if request.headers.getlist("X-Forwarded-For"):
+        return request.headers.getlist("X-Forwarded-For")[0]
+    return request.remote_addr
+
+def limit_requests(max_requests=10, window_seconds=60):
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            ip = get_client_ip()
+            now = time.time()
+            
+            # Loại bỏ các mốc thời gian cũ nằm ngoài khoảng thời gian giới hạn (window)
+            timestamps = rate_limit_records[ip]
+            timestamps = [t for t in timestamps if now - t < window_seconds]
+            rate_limit_records[ip] = timestamps
+            
+            if len(timestamps) >= max_requests:
+                wait_time = int(window_seconds - (now - timestamps[0]))
+                if wait_time <= 0:
+                    wait_time = 1
+                return jsonify({
+                    "error": f"Too many requests. Vui lòng thử lại sau {wait_time} giây."
+                }), 429
+                
+            rate_limit_records[ip].append(now)
+            return f(*args, **kwargs)
+        return wrapped
+    return decorator
+
+# Khởi tạo các dịch vụ
 gemini_service = GeminiService()
 supabase_service = SupabaseService()
 tax_calculator = TaxCalculator()
@@ -30,6 +66,7 @@ def health_check():
     return jsonify({"status": "ok", "message": "AI Tax Assistant Backend is running!"})
 
 @app.route('/api/chat', methods=['POST'])
+@limit_requests(10, 60)
 def chat():
     # Nhận dữ liệu dạng Form Data (Hỗ trợ File)
     user_message = request.form.get('message', '')
@@ -74,9 +111,12 @@ def chat():
         supabase_service.save_message(session_id, 'user', user_message, user_token, file_name=file_name, file_type=file_type)
         
     # 2. RAG - Lấy ngữ cảnh luật thuế
-    # Chuyển đổi câu hỏi của user thành Vector
-    query_vector = gemini_service.embed_text(user_message)
-    legal_context, sources = supabase_service.search_tax_laws(query_vector)
+    legal_context = ""
+    sources = []
+    if guard_service.needs_rag(user_message):
+        # Chuyển đổi câu hỏi của user thành Vector
+        query_vector = gemini_service.embed_text(user_message)
+        legal_context, sources = supabase_service.search_tax_laws(query_vector)
     
     # 3. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
     tax_result = None
@@ -115,13 +155,29 @@ def chat():
     return jsonify(response)
 
 @app.route('/api/files', methods=['GET'])
+@limit_requests(20, 60)
 def list_files():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    user_files = supabase_service.get_user_files(user_token)
+    allowed_filenames = {f.get('file_name') for f in user_files if f.get('file_name')}
+    
     upload_dir = "uploads"
     if not os.path.exists(upload_dir):
         return jsonify([])
     
     files = []
     for filename in os.listdir(upload_dir):
+        if filename not in allowed_filenames:
+            continue
         file_path = os.path.join(upload_dir, filename)
         if os.path.isfile(file_path):
             stats = os.stat(file_path)
@@ -136,7 +192,24 @@ def list_files():
     return jsonify(files)
 
 @app.route('/api/files/<filename>', methods=['GET'])
+@limit_requests(20, 60)
 def download_file(filename):
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    user_files = supabase_service.get_user_files(user_token)
+    allowed_filenames = {f.get('file_name') for f in user_files if f.get('file_name')}
+    
+    if filename not in allowed_filenames:
+        return jsonify({"error": "Forbidden: Bạn không có quyền truy cập tệp tin này"}), 403
+        
     from flask import send_file
     import io
     import mimetypes
@@ -163,6 +236,7 @@ def download_file(filename):
         return jsonify({"error": "Không thể giải mã tệp tin"}), 500
 
 @app.route('/api/sessions', methods=['GET'])
+@limit_requests(30, 60)
 def get_sessions():
     user_token = request.headers.get('Authorization')
     if not user_token:
@@ -178,6 +252,7 @@ def get_sessions():
     return jsonify(sessions)
 
 @app.route('/api/sessions/<session_id>/messages', methods=['GET'])
+@limit_requests(30, 60)
 def get_messages(session_id):
     user_token = request.headers.get('Authorization')
     if not user_token:
@@ -193,6 +268,7 @@ def get_messages(session_id):
     return jsonify(messages)
 
 @app.route('/api/sessions/<session_id>', methods=['DELETE'])
+@limit_requests(30, 60)
 def delete_session(session_id):
     user_token = request.headers.get('Authorization')
     if not user_token:
@@ -211,7 +287,24 @@ def delete_session(session_id):
         return jsonify({"error": "Failed to delete session"}), 500
 
 @app.route('/api/files/<filename>', methods=['DELETE'])
+@limit_requests(20, 60)
 def delete_file(filename):
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    user_files = supabase_service.get_user_files(user_token)
+    allowed_filenames = {f.get('file_name') for f in user_files if f.get('file_name')}
+    
+    if filename not in allowed_filenames:
+        return jsonify({"error": "Forbidden: Bạn không có quyền xóa tệp tin này"}), 403
+        
     file_path = os.path.join("uploads", filename)
     if os.path.exists(file_path):
         os.remove(file_path)

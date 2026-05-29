@@ -97,3 +97,59 @@ class GuardService:
              return False
 
         return True
+
+    def needs_rag(self, user_input: str) -> bool:
+        """
+        Xác định xem câu hỏi của người dùng có cần tra cứu luật thuế (RAG) hay không.
+        Trả về True nếu cần RAG, False nếu có thể trả lời trực tiếp (chào hỏi, ngoài lề...).
+        """
+        if not user_input or not user_input.strip():
+            return False
+            
+        clean_input = user_input.strip().lower()
+        
+        # 1. Bỏ qua RAG nếu câu hỏi quá ngắn (dưới 15 ký tự) và không chứa từ khóa thuế cốt lõi
+        core_tax_keywords = ["thuế", "vat", "gtgt", "tncn", "tndn", "tax"]
+        if len(clean_input) < 15 and not any(kw in clean_input for kw in core_tax_keywords):
+            return False
+            
+        # 2. Danh sách các câu chào hỏi, cảm ơn, xã giao phổ biến
+        greeting_patterns = [
+            r"^(xin)?\s*chào(\s+bạn)?$",
+            r"^(hi|hello|helo|hey|chào\s*ạ)$",
+            r"^(cảm\s*ơn|thank|thanks|cám\s*ơn)(\s+bạn|\s+ai)?$",
+            r"^(ok|oke|dạ|vâng|dạ\s*vâng|uh|ừ|đúng\s*rồi|hoàn\s*thành)$",
+            r"^(bạn\s*là\s*ai|tên\s*bạn\s*là\s*gi|ai\s*đó|ai\s*đấy)$",
+            r"^(tạm\s*biệt|bye|goodbye)$"
+        ]
+        
+        if any(re.match(pattern, clean_input) for pattern in greeting_patterns):
+            return False
+            
+        # 3. Danh sách các chủ đề hoàn toàn ngoài lề (ví dụ: tư vấn mua xe, mua nhà, thời tiết, giải trí...)
+        off_topic_keywords = [
+            # Phương tiện & Tài sản cá nhân (không chứa từ khóa thuế)
+            "mua xe", "mua nhà", "mua đất", "xe máy", "ô tô", "xe hơi", "xe đạp", "chung cư",
+            # Thiết bị gia dụng & Công nghệ
+            "điện thoại", "máy tính", "laptop", "tivi", "tủ lạnh", "điều hòa", "máy giặt", "tai nghe",
+            # Giải trí, Thể thao & Nghệ thuật
+            "thời tiết", "đá bóng", "bóng đá", "đá banh", "tin tức", "ca nhạc", "phim ảnh", "nghe nhạc",
+            "xem phim", "bài hát", "ca sĩ", "diễn viên", "game", "chơi game", "cầu lông", "gym", "thể thao",
+            "yoga", "chạy bộ", "bơi lội", "truyện tranh", "tiểu thuyết",
+            # Đời sống, Ẩm thực & Gia đình
+            "nấu ăn", "món ăn", "công thức", "thực đơn", "sức khỏe", "bệnh viện", "bác sĩ", "thuốc men",
+            "yêu đương", "kết hôn", "ly hôn", "gia đình", "con cái", "bố mẹ", "vợ chồng",
+            # Học tập & Khoa học (ngoài lĩnh vực thuế/kế toán)
+            "học tập", "thi cử", "trường học", "đại học", "học sinh", "sinh viên", "code", "lập trình",
+            "viết code", "phần mềm", "khoa học", "vật lý", "hóa học", "toán học", "vũ trụ", "thiên văn",
+            # Thời sự, Chính trị & Tôn giáo (Tránh bàn luận ngoài lề nhạy cảm)
+            "chính trị", "chính phủ", "nhà nước", "đảng", "bầu cử", "tôn giáo", "chùa", "nhà thờ",
+            "quân sự", "chiến tranh", "biểu tình", "bạo loạn", "thời sự", "tin nóng", "tin giật gân",
+            # Trò chuyện phiếm & Xã giao
+            "tâm sự", "kể chuyện", "chuyện cười", "làm thơ", "thơ ca", "tán gẫu", "ngày mai", "hôm nay"
+        ]
+        
+        if any(kw in clean_input for kw in off_topic_keywords) and not any(kw in clean_input for kw in core_tax_keywords):
+            return False
+            
+        return True

@@ -101,7 +101,7 @@ export default function Home() {
   // Tải danh sách các phiên chat từ backend proxy
   const loadChatSessions = async (token: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/sessions?supabase_token=${token}`);
+      const response = await fetch(`/api/sessions?supabase_token=${token}`);
       if (response.ok) {
         const sessions = await response.json();
         if (sessions && sessions.length > 0) {
@@ -122,7 +122,7 @@ export default function Home() {
     if (!token) return;
     setCurrentSessionId(sessionId);
     try {
-      const response = await fetch(`http://localhost:5000/api/sessions/${sessionId}/messages?supabase_token=${token}`);
+      const response = await fetch(`/api/sessions/${sessionId}/messages?supabase_token=${token}`);
       if (response.ok) {
         const msgs = await response.json();
         if (msgs && msgs.length > 0) {
@@ -170,7 +170,7 @@ export default function Home() {
     if (!userToken) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/sessions/${sessionId}?supabase_token=${userToken}`, {
+      const response = await fetch(`/api/sessions/${sessionId}?supabase_token=${userToken}`, {
         method: 'DELETE'
       });
       if (response.ok) {
@@ -379,7 +379,7 @@ export default function Home() {
     if (currentSessionId) formData.append("session_id", currentSessionId);
 
     try {
-      const response = await fetch("http://localhost:5000/api/chat", {
+      const response = await fetch("/api/chat", {
         method: "POST",
         body: formData,
       });
@@ -455,8 +455,9 @@ export default function Home() {
   };
 
   const fetchFiles = async () => {
+    if (!userToken) return;
     try {
-      const response = await fetch("http://localhost:5000/api/files");
+      const response = await fetch(`/api/files?supabase_token=${userToken}`);
       const data = await response.json();
       setUploadedFiles(data);
     } catch (error) {
@@ -465,13 +466,15 @@ export default function Home() {
   };
 
   const handleDownload = (filename: string) => {
-    window.open(`http://localhost:5000/api/files/${filename}`, "_blank");
+    if (!userToken) return;
+    window.open(`/api/files/${filename}?supabase_token=${userToken}`, "_blank");
   };
 
   const handleDeleteFile = async (filename: string) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa file ${filename}?`)) return;
+    if (!userToken) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/files/${filename}`, {
+      const response = await fetch(`/api/files/${filename}?supabase_token=${userToken}`, {
         method: "DELETE",
       });
       if (response.ok) {
