@@ -22,7 +22,9 @@ class SupabaseService:
             "Prefer": "return=representation"
         }
         
-        data = {"title": title}
+        # Mã hóa tiêu đề phiên chat trước khi lưu
+        encrypted_title = self.encryption_service.encrypt_text(title)
+        data = {"title": encrypted_title}
         
         try:
             response = requests.post(
@@ -328,7 +330,15 @@ class SupabaseService:
                 headers=headers
             )
             if response.status_code == 200:
-                return response.json()
+                sessions = response.json()
+                for s in sessions:
+                    if "title" in s and s["title"]:
+                        decrypted = self.encryption_service.decrypt_text(s["title"])
+                        if decrypted == "[Lỗi giải mã nội dung]":
+                            # Fallback cho các session cũ chưa được mã hóa tiêu đề
+                            decrypted = s["title"]
+                        s["title"] = decrypted
+                return sessions
             else:
                 print(f"Error fetching sessions: {response.text}")
         except Exception as e:

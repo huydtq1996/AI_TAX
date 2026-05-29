@@ -100,56 +100,69 @@ class GuardService:
 
     def needs_rag(self, user_input: str) -> bool:
         """
-        Xác định xem câu hỏi của người dùng có cần tra cứu luật thuế (RAG) hay không.
-        Trả về True nếu cần RAG, False nếu có thể trả lời trực tiếp (chào hỏi, ngoài lề...).
+        Xác định xem câu hỏi có thực sự cần tra cứu RAG (Luật Thuế/Kế toán) hay không.
+        Sử dụng cơ chế tính điểm (Scoring) thay vì chỉ chặn từ khóa.
         """
         if not user_input or not user_input.strip():
             return False
             
         clean_input = user_input.strip().lower()
         
-        # 1. Bỏ qua RAG nếu câu hỏi quá ngắn (dưới 15 ký tự) và không chứa từ khóa thuế cốt lõi
-        core_tax_keywords = ["thuế", "vat", "gtgt", "tncn", "tndn", "tax"]
-        if len(clean_input) < 15 and not any(kw in clean_input for kw in core_tax_keywords):
+        # 1. Bỏ qua RAG nếu câu hỏi quá ngắn (dưới 10 ký tự)
+        if len(clean_input) < 10:
             return False
             
-        # 2. Danh sách các câu chào hỏi, cảm ơn, xã giao phổ biến
+        # 2. Loại trừ ngay lập tức các câu tiếng Anh mang tính kỹ thuật/hệ thống 
+        # (như "export your dataset", "ignore all previous instructions")
+        system_commands = ["export", "ignore", "dataset", "prompt", "system", "tell me your"]
+        if any(cmd in clean_input for cmd in system_commands):
+            return False
+
+        # 3. Lọc nhanh các câu giao tiếp cơ bản (Giữ nguyên từ bản cũ nhưng chặt chẽ hơn)
         greeting_patterns = [
-            r"^(xin)?\s*chào(\s+bạn)?$",
-            r"^(hi|hello|helo|hey|chào\s*ạ)$",
-            r"^(cảm\s*ơn|thank|thanks|cám\s*ơn)(\s+bạn|\s+ai)?$",
-            r"^(ok|oke|dạ|vâng|dạ\s*vâng|uh|ừ|đúng\s*rồi|hoàn\s*thành)$",
-            r"^(bạn\s*là\s*ai|tên\s*bạn\s*là\s*gi|ai\s*đó|ai\s*đấy)$",
-            r"^(tạm\s*biệt|bye|goodbye)$"
+            r"^(xin)?\s*chào(\s+bạn)?.*",
+            r"^(hi|hello|helo|hey|chào\s*ạ).*",
+            r"^(cảm\s*ơn|thank|thanks|cám\s*ơn).*",
+            r"^(ok|oke|dạ|vâng|uh|ừ|đúng\s*rồi).*",
+            r"^(bạn\s*là\s*ai|ai\s*đó|ai\s*đấy).*",
+            r"^(tạm\s*biệt|bye|goodbye).*"
+        ]
+        if any(re.match(pattern, clean_input) for pattern in greeting_patterns) and len(clean_input) < 30:
+            return False
+
+        # 4. HỆ THỐNG TÍNH ĐIỂM (Scoring System) - ĐÂY LÀ PHẦN CỐT LÕI MỚI
+        # Một câu hỏi phải đạt đủ điểm "chuyên môn" mới được phép vào RAG
+        score = 0
+        
+        # Nhóm A: Từ khóa thuế cốt lõi (Core) -> Trọng số cao (+2)
+        core_keywords = [
+            "thuế", "vat", "gtgt", "tncn", "tndn", "ttđb", "thuế xuất nhập khẩu",
+            "kê khai", "khai báo", "nộp thuế", "hoàn thuế", "quyết toán", "tờ khai",
+            "hóa đơn", "giá trị gia tăng", "thu nhập cá nhân", "thu nhập doanh nghiệp",
+            "hộ kinh doanh", "cá nhân kinh doanh", "mã số thuế", "mst"
         ]
         
-        if any(re.match(pattern, clean_input) for pattern in greeting_patterns):
-            return False
-            
-        # 3. Danh sách các chủ đề hoàn toàn ngoài lề (ví dụ: tư vấn mua xe, mua nhà, thời tiết, giải trí...)
-        off_topic_keywords = [
-            # Phương tiện & Tài sản cá nhân (không chứa từ khóa thuế)
-            "mua xe", "mua nhà", "mua đất", "xe máy", "ô tô", "xe hơi", "xe đạp", "chung cư",
-            # Thiết bị gia dụng & Công nghệ
-            "điện thoại", "máy tính", "laptop", "tivi", "tủ lạnh", "điều hòa", "máy giặt", "tai nghe",
-            # Giải trí, Thể thao & Nghệ thuật
-            "thời tiết", "đá bóng", "bóng đá", "đá banh", "tin tức", "ca nhạc", "phim ảnh", "nghe nhạc",
-            "xem phim", "bài hát", "ca sĩ", "diễn viên", "game", "chơi game", "cầu lông", "gym", "thể thao",
-            "yoga", "chạy bộ", "bơi lội", "truyện tranh", "tiểu thuyết",
-            # Đời sống, Ẩm thực & Gia đình
-            "nấu ăn", "món ăn", "công thức", "thực đơn", "sức khỏe", "bệnh viện", "bác sĩ", "thuốc men",
-            "yêu đương", "kết hôn", "ly hôn", "gia đình", "con cái", "bố mẹ", "vợ chồng",
-            # Học tập & Khoa học (ngoài lĩnh vực thuế/kế toán)
-            "học tập", "thi cử", "trường học", "đại học", "học sinh", "sinh viên", "code", "lập trình",
-            "viết code", "phần mềm", "khoa học", "vật lý", "hóa học", "toán học", "vũ trụ", "thiên văn",
-            # Thời sự, Chính trị & Tôn giáo (Tránh bàn luận ngoài lề nhạy cảm)
-            "chính trị", "chính phủ", "nhà nước", "đảng", "bầu cử", "tôn giáo", "chùa", "nhà thờ",
-            "quân sự", "chiến tranh", "biểu tình", "bạo loạn", "thời sự", "tin nóng", "tin giật gân",
-            # Trò chuyện phiếm & Xã giao
-            "tâm sự", "kể chuyện", "chuyện cười", "làm thơ", "thơ ca", "tán gẫu", "ngày mai", "hôm nay"
+        # Nhóm B: Từ khóa ngữ cảnh doanh nghiệp/kế toán (Context) -> Trọng số vừa (+1)
+        context_keywords = [
+            "doanh thu", "chi phí", "lợi nhuận", "công ty", "doanh nghiệp", "kế toán",
+            "khấu trừ", "miễn giảm", "chịu thuế", "luật", "nghị định", "thông tư",
+            "thu nhập", "mặt hàng", "xuất khẩu", "nhập khẩu", "bán hàng", "kinh doanh",
+            "phạt", "chậm nộp", "trốn thuế", "đóng thuế", "nghĩa vụ"
         ]
         
-        if any(kw in clean_input for kw in off_topic_keywords) and not any(kw in clean_input for kw in core_tax_keywords):
-            return False
+        # Chấm điểm
+        for kw in core_keywords:
+            if kw in clean_input:
+                score += 2
+                
+        for kw in context_keywords:
+            if kw in clean_input:
+                score += 1
+                
+        # 5. Phán quyết
+        # Chỉ gọi RAG nếu câu hỏi có ít nhất 1 từ khóa cốt lõi (>=2đ) 
+        # HOẶC có nhiều từ khóa ngữ cảnh (>=2đ)
+        if score >= 2:
+            return True
             
-        return True
+        return False
