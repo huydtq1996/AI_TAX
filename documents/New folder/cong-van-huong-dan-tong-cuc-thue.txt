@@ -1,0 +1,167 @@
+TỔNG HỢP CÔNG VĂN HƯỚNG DẪN CỦA TỔNG CỤC THUẾ
+Các tình huống thực tế về thuế cho hộ kinh doanh nhỏ
+
+====================================================================
+1. HỘ KINH DOANH BÁN HÀNG ONLINE
+====================================================================
+
+Câu hỏi: Cá nhân bán hàng trên Shopee, Facebook có phải nộp thuế không?
+
+Trả lời (Công văn 79/TCT-DNNCN ngày 2022):
+- Cá nhân kinh doanh online (bán hàng trên sàn TMĐT) có nghĩa vụ nộp thuế nếu doanh thu > 100 triệu đồng/năm.
+- Sàn TMĐT (Shopee, Lazada, Tiki) có trách nhiệm cung cấp dữ liệu người bán cho cơ quan thuế.
+- Thuế suất: theo ngành hàng bán (Phụ lục I, Thông tư 40/2021):
+  + Bán hàng hóa: GTGT 1% + TNCN 0.5% = 1.5% tổng doanh thu
+  + Dịch vụ (ví dụ thiết kế, tư vấn online): GTGT 5% + TNCN 2% = 7%
+- Cách kê khai: nộp thuế theo quý hoặc theo năm tại Chi cục Thuế nơi cư trú.
+
+====================================================================
+2. CHO THUÊ NHÀ, MẶT BẰNG
+====================================================================
+
+Câu hỏi: Cá nhân cho thuê nhà/mặt bằng phải nộp những loại thuế gì?
+
+Trả lời:
+- Thuế GTGT: 5% trên doanh thu cho thuê (nếu doanh thu > 100 triệu/năm).
+- Thuế TNCN: 5% trên doanh thu cho thuê (nếu doanh thu > 100 triệu/năm).
+- Tổng: 10% trên doanh thu cho thuê.
+- Miễn thuế: nếu tổng doanh thu cho thuê ≤ 100 triệu đồng/năm.
+
+Ví dụ: Bà E cho thuê mặt bằng 15 triệu/tháng = 180 triệu/năm.
+- Thuế GTGT = 180.000.000 × 5% = 9.000.000 đồng
+- Thuế TNCN = 180.000.000 × 5% = 9.000.000 đồng
+- Tổng thuế = 18.000.000 đồng/năm
+
+====================================================================
+3. HỘ KINH DOANH MỚI THÀNH LẬP
+====================================================================
+
+Câu hỏi: Hộ kinh doanh mới mở cần làm gì về thuế?
+
+Trả lời:
+Bước 1: Đăng ký kinh doanh tại UBND quận/huyện → nhận Giấy chứng nhận ĐKKD.
+Bước 2: Đăng ký thuế tại Chi cục Thuế (trong vòng 10 ngày) → nhận Mã số thuế.
+Bước 3: Khai thuế ban đầu (Mẫu 01/CNKD):
+  - Ngành nghề kinh doanh
+  - Doanh thu dự kiến
+  - Địa điểm kinh doanh
+Bước 4: Nhận Thông báo nộp thuế từ cơ quan thuế → nộp thuế theo quý.
+
+Lưu ý: 
+- Nếu doanh thu dự kiến < 100 triệu/năm → khai nhưng không phải nộp thuế.
+- Hộ kinh doanh mới thành lập có thể đăng ký sử dụng hóa đơn điện tử.
+
+====================================================================
+4. HỘ KINH DOANH NGHỈ, TẠM NGỪNG KINH DOANH
+====================================================================
+
+Câu hỏi: Muốn nghỉ kinh doanh tạm thời thì làm thế nào?
+
+Trả lời:
+1. Thông báo cho Chi cục Thuế trước ít nhất 15 ngày trước khi nghỉ.
+2. Hồ sơ: Văn bản thông báo nghỉ kinh doanh (nêu rõ thời gian nghỉ).
+3. Trong thời gian nghỉ: KHÔNG phải nộp thuế khoán.
+4. Khi kinh doanh lại: thông báo cho Chi cục Thuế trước ít nhất 15 ngày.
+5. Thời gian nghỉ tối đa: theo quy định của luật doanh nghiệp (1 năm/lần, tổng không quá 2 năm).
+
+====================================================================
+5. XÁC ĐỊNH DOANH THU KHOÁN
+====================================================================
+
+Câu hỏi: Cơ quan thuế xác định doanh thu khoán như thế nào?
+
+Trả lời:
+1. Hộ kinh doanh tự khai doanh thu dự kiến.
+2. Cơ quan thuế xác minh bằng:
+   a) So sánh với hộ kinh doanh cùng ngành nghề, cùng địa bàn.
+   b) Kiểm tra thực tế tại cơ sở kinh doanh.
+   c) Thông tin từ sàn TMĐT, ngân hàng, đối tác.
+3. Nếu hộ kinh doanh không đồng ý mức khoán → có quyền khiếu nại trong 5 ngày.
+4. Mức thuế khoán được niêm yết công khai tại trụ sở Chi cục Thuế.
+
+====================================================================
+6. HÓA ĐƠN CHO HỘ KINH DOANH
+====================================================================
+
+Câu hỏi: Hộ kinh doanh có cần xuất hóa đơn không?
+
+Trả lời:
+1. Hộ kinh doanh nộp thuế khoán: KHÔNG bắt buộc sử dụng hóa đơn.
+   - Khi khách hàng yêu cầu hóa đơn → đề nghị cơ quan thuế cấp hóa đơn lẻ.
+   - Thuế đã nộp theo khoán → không phải nộp thêm thuế khi cấp hóa đơn lẻ (nếu đã tính trong doanh thu khoán).
+
+2. Hộ kinh doanh nộp thuế kê khai: BẮT BUỘC sử dụng hóa đơn điện tử.
+
+3. Từ 01/07/2022: tất cả hộ kinh doanh chuyển sang hóa đơn điện tử (theo Luật Quản lý thuế 2019).
+
+====================================================================
+7. THUẾ CHO NGHỀ TỰ DO (FREELANCER)
+====================================================================
+
+Câu hỏi: Cá nhân làm freelancer (thiết kế, lập trình, viết bài...) nộp thuế thế nào?
+
+Trả lời:
+1. Doanh thu ≤ 100 triệu/năm: không phải nộp thuế.
+2. Doanh thu > 100 triệu/năm:
+   - Thuế GTGT: 5% (dịch vụ)
+   - Thuế TNCN: 2% (dịch vụ)
+   - Tổng: 7%
+
+3. Nếu làm việc cho tổ chức/cá nhân có hợp đồng:
+   - Bên thuê dịch vụ khấu trừ thuế 10% trước khi trả tiền.
+   - Cá nhân quyết toán cuối năm, được hoàn lại nếu nộp thừa.
+
+====================================================================
+8. CHUYỂN ĐỔI TỪ HỘ KINH DOANH SANG DOANH NGHIỆP
+====================================================================
+
+Câu hỏi: Khi nào nên chuyển từ hộ kinh doanh sang doanh nghiệp?
+
+Trả lời:
+Nên cân nhắc chuyển khi:
+1. Doanh thu vượt 1 tỷ đồng/năm.
+2. Cần mở rộng quy mô, thuê nhiều lao động (>10 người).
+3. Cần xuất hóa đơn GTGT thường xuyên.
+4. Muốn tham gia đấu thầu, ký hợp đồng với cơ quan nhà nước.
+
+Lợi ích khi chuyển sang doanh nghiệp:
+- Được khấu trừ thuế GTGT đầu vào → tiết kiệm thuế.
+- Uy tín thương mại cao hơn.
+- Dễ vay vốn ngân hàng.
+- Có tư cách pháp nhân.
+
+Bất lợi:
+- Phải thực hiện chế độ kế toán đầy đủ (thuê kế toán).
+- Chi phí tuân thủ cao hơn (kiểm toán, báo cáo tài chính).
+- Thuế suất TNDN 20% (so với TNCN khoán 0.5%-2%).
+
+====================================================================
+9. XỬ PHẠT VI PHẠM THUẾ HỘ KINH DOANH
+====================================================================
+
+Các mức xử phạt phổ biến:
+1. Chậm nộp tờ khai thuế: phạt từ 2-5 triệu đồng.
+2. Khai sai thuế: phạt 20% số thuế khai thiếu + truy thu thuế.
+3. Trốn thuế: phạt từ 1-3 lần số thuế trốn + truy thu.
+4. Không đăng ký thuế: phạt từ 2-5 triệu đồng.
+5. Chậm nộp tiền thuế: 0,03%/ngày chậm nộp.
+6. Kinh doanh không có ĐKKD: phạt từ 5-10 triệu đồng.
+
+====================================================================
+10. CÂU HỎI THƯỜNG GẶP
+====================================================================
+
+Q: Doanh thu dưới 100 triệu có cần đăng ký thuế không?
+A: CÓ. Vẫn phải đăng ký thuế và khai thuế, nhưng KHÔNG phải nộp thuế.
+
+Q: Hộ kinh doanh có được giảm thuế khi gặp khó khăn không?
+A: CÓ. Trường hợp thiên tai, hỏa hoạn, bệnh hiểm nghèo → nộp đơn xin giảm thuế tại Chi cục Thuế.
+
+Q: Kinh doanh theo mùa vụ (ví dụ bán áo mưa mùa mưa) tính thuế thế nào?
+A: Tính theo số tháng thực tế kinh doanh. Ngưỡng 100 triệu/năm chia theo tỷ lệ tháng.
+
+Q: Hai vợ chồng cùng kinh doanh một cửa hàng, ai nộp thuế?
+A: Người đứng tên Giấy ĐKKD là người nộp thuế. Chỉ tính thuế 1 lần cho hộ kinh doanh.
+
+Q: Bán hàng trên nhiều nền tảng (Shopee + Facebook + cửa hàng) tính doanh thu thế nào?
+A: Tổng doanh thu từ TẤT CẢ các nguồn = doanh thu tính thuế. Nếu tổng > 100 triệu/năm → phải nộp thuế.

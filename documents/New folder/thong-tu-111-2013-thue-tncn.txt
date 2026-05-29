@@ -1,0 +1,122 @@
+THÔNG TƯ 111/2013/TT-BTC
+Hướng dẫn thực hiện Luật Thuế thu nhập cá nhân và Nghị định 65/2013/NĐ-CP
+Ngày ban hành: 15/08/2013
+Ngày hiệu lực: 01/10/2013
+Cơ quan ban hành: Bộ Tài chính
+Sửa đổi bổ sung: Thông tư 92/2015/TT-BTC
+
+====================================================================
+CHƯƠNG I: CÁ NHÂN CƯ TRÚ VÀ KHÔNG CƯ TRÚ
+====================================================================
+
+Điều 1. Cá nhân cư trú
+1. Có mặt tại Việt Nam từ 183 ngày trở lên tính trong một năm dương lịch hoặc trong 12 tháng liên tục kể từ ngày đầu tiên có mặt tại Việt Nam.
+2. Có nơi ở thường xuyên tại Việt Nam: đăng ký thường trú hoặc thuê nhà ở tại Việt Nam theo hợp đồng từ 183 ngày trở lên.
+
+Điều 2. Thu nhập chịu thuế từ tiền lương, tiền công
+Bao gồm:
+- Tiền lương, tiền công, thưởng.
+- Phụ cấp, trợ cấp (trừ các khoản miễn thuế).
+- Tiền nhà, điện, nước do người sử dụng lao động chi trả (tối đa 15% tổng thu nhập chịu thuế).
+- Lợi ích bằng tiền hoặc không bằng tiền ngoài tiền lương.
+- Tiền mua bảo hiểm tự nguyện cho người lao động.
+
+====================================================================
+CHƯƠNG II: GIẢM TRỪ GIA CẢNH
+====================================================================
+
+Điều 9. Giảm trừ gia cảnh
+1. Mức giảm trừ cho bản thân: 11.000.000 đồng/tháng (132.000.000 đồng/năm).
+2. Mức giảm trừ cho mỗi người phụ thuộc: 4.400.000 đồng/tháng/người (52.800.000 đồng/năm/người).
+
+Điều 10. Người phụ thuộc
+1. Con: con đẻ, con nuôi hợp pháp, con riêng, con ngoài giá thú.
+   - Con dưới 18 tuổi.
+   - Con trên 18 tuổi bị khuyết tật, không có khả năng lao động.
+   - Con đang theo học (dưới 25 tuổi), không có thu nhập hoặc thu nhập không quá 1 triệu đồng/tháng.
+
+2. Vợ/chồng: không có thu nhập hoặc thu nhập không quá 1 triệu đồng/tháng.
+
+3. Cha mẹ (cha đẻ, mẹ đẻ, cha vợ, mẹ vợ, cha chồng, mẹ chồng, cha nuôi, mẹ nuôi):
+   - Trên tuổi lao động, không có thu nhập hoặc thu nhập không quá 1 triệu đồng/tháng.
+   - Trong độ tuổi lao động nhưng bị khuyết tật, không có khả năng lao động.
+
+4. Anh chị em ruột (không nơi nương tựa): bị khuyết tật, không có khả năng lao động.
+
+Điều 11. Đăng ký người phụ thuộc
+1. Nộp hồ sơ đăng ký tại cơ quan chi trả thu nhập hoặc cơ quan thuế.
+2. Hồ sơ: Bản đăng ký + Giấy tờ chứng minh quan hệ (giấy khai sinh, giấy đăng ký kết hôn...).
+3. Thời hạn: đầu năm hoặc khi phát sinh người phụ thuộc mới.
+
+====================================================================
+CHƯƠNG III: TÍNH THUẾ TNCN TỪ TIỀN LƯƠNG
+====================================================================
+
+Điều 7. Cách tính thuế TNCN từ tiền lương (cá nhân cư trú có HĐLĐ ≥ 3 tháng)
+
+Bước 1: Tính thu nhập chịu thuế
+Thu nhập chịu thuế = Tổng thu nhập - Các khoản miễn thuế
+
+Bước 2: Tính thu nhập tính thuế
+Thu nhập tính thuế = Thu nhập chịu thuế - Giảm trừ gia cảnh - Bảo hiểm bắt buộc - Quỹ hưu trí tự nguyện - Đóng góp từ thiện
+
+Bước 3: Áp dụng biểu thuế lũy tiến từng phần
+
+Bậc | Thu nhập tính thuế/tháng      | Thuế suất | Tính nhanh
+----|-------------------------------|-----------|------------------
+1   | Đến 5 triệu                   | 5%        | 0 + 5% × TNTT
+2   | Trên 5 đến 10 triệu           | 10%       | 250.000 + 10% × (TNTT - 5tr)
+3   | Trên 10 đến 18 triệu          | 15%       | 750.000 + 15% × (TNTT - 10tr)
+4   | Trên 18 đến 32 triệu          | 20%       | 1.950.000 + 20% × (TNTT - 18tr)
+5   | Trên 32 đến 52 triệu          | 25%       | 4.750.000 + 25% × (TNTT - 32tr)
+6   | Trên 52 đến 80 triệu          | 30%       | 9.750.000 + 30% × (TNTT - 52tr)
+7   | Trên 80 triệu                 | 35%       | 18.150.000 + 35% × (TNTT - 80tr)
+
+VÍ DỤ TÍNH THUẾ:
+Anh A lương 30 triệu/tháng, đóng BHXH 10.5%, 1 người phụ thuộc (con).
+- Thu nhập chịu thuế = 30.000.000
+- BHXH (10.5%) = 3.150.000
+- Giảm trừ bản thân = 11.000.000
+- Giảm trừ 1 người phụ thuộc = 4.400.000
+- Thu nhập tính thuế = 30.000.000 - 3.150.000 - 11.000.000 - 4.400.000 = 11.450.000
+- Thuế TNCN = 750.000 + 15% × (11.450.000 - 10.000.000) = 750.000 + 217.500 = 967.500 đồng/tháng
+
+====================================================================
+CHƯƠNG IV: THUẾ TNCN TỪ CÁC NGUỒN KHÁC
+====================================================================
+
+Điều 12. Thu nhập từ đầu tư vốn
+- Thuế suất: 5%
+- Thuế = Lãi cổ phần (cổ tức) × 5%
+- Thời điểm: khi nhận lãi
+
+Điều 13. Thu nhập từ chuyển nhượng vốn
+- Thuế = (Giá bán - Giá mua - Chi phí chuyển nhượng) × 20%
+- Đối với chứng khoán: Thuế = Giá bán × 0.1% (thuế khoán)
+
+Điều 14. Thu nhập từ chuyển nhượng bất động sản
+- Thuế = Giá chuyển nhượng × 2%
+- Giá chuyển nhượng: giá ghi trong hợp đồng (không thấp hơn giá Nhà nước quy định)
+
+Điều 15. Thu nhập từ trúng thưởng
+- Thuế = (Giá trị giải thưởng - 10.000.000) × 10%
+- Chỉ nộp thuế phần vượt 10 triệu đồng
+
+====================================================================
+CHƯƠNG V: QUYẾT TOÁN THUẾ
+====================================================================
+
+Điều 21. Quyết toán thuế TNCN
+1. Tổ chức chi trả quyết toán thay cho người lao động:
+   - Chỉ có thu nhập tại 1 nơi.
+   - Có ủy quyền bằng văn bản.
+   - Thời hạn: chậm nhất ngày cuối tháng 3 năm sau.
+
+2. Cá nhân tự quyết toán:
+   - Có thu nhập từ 2 nơi trở lên.
+   - Có thu nhập từ kinh doanh.
+   - Thời hạn: chậm nhất ngày 30/04 năm sau.
+
+3. Không phải quyết toán khi:
+   - Chỉ có thu nhập từ tiền lương tại 1 nơi đã khấu trừ đủ thuế.
+   - Thu nhập tính thuế sau giảm trừ ≤ 0 (không phát sinh thuế phải nộp).

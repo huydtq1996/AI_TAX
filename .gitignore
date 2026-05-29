@@ -17,9 +17,6 @@ frontend/*.tsbuildinfo
 .DS_Store
 Thumbs.db
 
-# Documents
-documents/
-
 # Temporary and Scratch files
 *.json
 !package.json

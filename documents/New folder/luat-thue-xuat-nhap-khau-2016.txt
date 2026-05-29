@@ -1,0 +1,81 @@
+LUẬT THUẾ XUẤT KHẨU, THUẾ NHẬP KHẨU
+Số: 107/2016/QH13
+Ngày ban hành: 06/04/2016
+Ngày hiệu lực: 01/09/2016
+Cơ quan ban hành: Quốc hội
+
+====================================================================
+CHƯƠNG I: QUY ĐỊNH CHUNG
+====================================================================
+
+Điều 1. Phạm vi điều chỉnh
+Luật này quy định về đối tượng chịu thuế, người nộp thuế, căn cứ tính thuế, thời điểm tính thuế, biểu thuế, thuế chống bán phá giá, thuế chống trợ cấp, thuế tự vệ, miễn thuế, giảm thuế, hoàn thuế, không thu thuế xuất nhập khẩu.
+
+Điều 2. Đối tượng chịu thuế
+1. Hàng hóa xuất khẩu, nhập khẩu qua cửa khẩu, biên giới Việt Nam.
+2. Hàng hóa xuất khẩu từ nội địa vào khu phi thuế quan, hàng nhập khẩu từ khu phi thuế quan vào nội địa.
+3. Hàng hóa xuất khẩu, nhập khẩu tại chỗ và hàng hóa xuất khẩu, nhập khẩu của doanh nghiệp chế xuất.
+
+Điều 3. Đối tượng không chịu thuế
+1. Hàng hóa quá cảnh, chuyển khẩu, trung chuyển.
+2. Hàng viện trợ nhân đạo, viện trợ không hoàn lại.
+3. Hàng hóa từ khu phi thuế quan xuất khẩu ra nước ngoài.
+4. Hàng hóa là phần dầu khí thuộc thuế tài nguyên của Nhà nước.
+
+====================================================================
+CHƯƠNG II: CĂN CỨ TÍNH THUẾ
+====================================================================
+
+Điều 5. Căn cứ tính thuế xuất khẩu, nhập khẩu
+1. Số lượng từng mặt hàng thực tế xuất khẩu, nhập khẩu.
+2. Giá tính thuế, thuế suất từng mặt hàng.
+
+Điều 6. Giá tính thuế
+1. Giá tính thuế nhập khẩu: giá CIF (Cost, Insurance, Freight) = giá mua + phí bảo hiểm + phí vận chuyển.
+2. Giá tính thuế xuất khẩu: giá FOB (Free On Board) = giá bán tại cửa khẩu xuất.
+3. Trường hợp không xác định được giá: áp dụng phương pháp trị giá hải quan theo Hiệp định Trị giá GATT.
+
+Điều 7. Thuế suất
+1. Thuế suất ưu đãi (MFN): áp dụng cho hàng nhập khẩu từ nước/vùng lãnh thổ có quan hệ thương mại bình thường với Việt Nam (hầu hết các nước WTO).
+2. Thuế suất ưu đãi đặc biệt (FTA): áp dụng cho hàng nhập khẩu từ nước có FTA với Việt Nam (ASEAN, Trung Quốc, Hàn Quốc, Nhật Bản, EU, CPTPP...).
+3. Thuế suất thông thường: = 150% thuế suất MFN, áp dụng cho hàng nhập khẩu từ nước không có quan hệ thương mại bình thường.
+
+Điều 8. Biểu thuế
+1. Biểu thuế xuất khẩu: theo danh mục hàng hóa và mức thuế suất.
+2. Biểu thuế nhập khẩu ưu đãi: theo Danh mục HS (Harmonized System) 8 chữ số.
+3. Biểu thuế nhập khẩu ưu đãi đặc biệt: theo từng FTA.
+
+====================================================================
+CHƯƠNG III: THUẾ CHỐNG BÁN PHÁ GIÁ, CHỐNG TRỢ CẤP, TỰ VỆ
+====================================================================
+
+Điều 12. Thuế chống bán phá giá
+1. Áp dụng khi hàng nhập khẩu bán phá giá gây thiệt hại cho ngành sản xuất trong nước.
+2. Biên độ bán phá giá = Giá thông thường - Giá xuất khẩu.
+3. Mức thuế chống bán phá giá ≤ biên độ bán phá giá.
+
+Điều 13. Thuế chống trợ cấp
+1. Áp dụng khi hàng nhập khẩu được trợ cấp gây thiệt hại cho sản xuất trong nước.
+2. Mức thuế chống trợ cấp ≤ mức trợ cấp.
+
+Điều 14. Thuế tự vệ
+1. Áp dụng khi hàng nhập khẩu tăng đột biến gây thiệt hại nghiêm trọng cho sản xuất trong nước.
+2. Thời hạn áp dụng: tối đa 4 năm (gia hạn tối đa 6 năm).
+
+====================================================================
+CHƯƠNG IV: MIỄN THUẾ, GIẢM THUẾ, HOÀN THUẾ
+====================================================================
+
+Điều 16. Miễn thuế
+1. Hàng quà biếu, quà tặng trong định mức (cá nhân: trị giá dưới 1 triệu đồng hoặc theo quy định).
+2. Hàng mẫu không có giá trị thương mại.
+3. Hàng tạm nhập tái xuất hoặc tạm xuất tái nhập trong thời hạn.
+4. Hàng nhập khẩu để gia công cho nước ngoài.
+5. Hàng nhập khẩu tạo tài sản cố định cho dự án ưu đãi đầu tư.
+6. Nguyên liệu nhập khẩu để sản xuất xuất khẩu.
+
+Điều 18. Hoàn thuế
+1. Hàng nhập khẩu đã nộp thuế nhưng tái xuất.
+2. Hàng xuất khẩu đã nộp thuế nhưng tái nhập.
+3. Hàng nhập khẩu đã nộp thuế nhưng thực tế nhập ít hơn.
+4. Máy móc, thiết bị, dụng cụ nghề tạm nhập tái xuất.

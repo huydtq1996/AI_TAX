@@ -137,9 +137,17 @@ export default function Home() {
 
           // Bản sao mảng để tránh đảo ngược mảng chính
           const reverseMsgs = [...msgs].reverse();
-          const lastBotMsg = reverseMsgs.find((m: any) => m.role === 'assistant' && m.tax_result_snapshot);
-          if (lastBotMsg) setTaxData(lastBotMsg.tax_result_snapshot?.tax_snapshot || lastBotMsg.tax_result_snapshot);
-          else setTaxData(null);
+          const lastBotMsg = reverseMsgs.find((m: any) => {
+            if (m.role !== 'assistant' || !m.tax_result_snapshot) return false;
+            const snapshot = m.tax_result_snapshot;
+            return snapshot.tax_snapshot !== undefined || snapshot.is_taxable !== undefined;
+          });
+          if (lastBotMsg) {
+            const snapshot = lastBotMsg.tax_result_snapshot;
+            setTaxData(snapshot.tax_snapshot || snapshot);
+          } else {
+            setTaxData(null);
+          }
         } else {
           setMessages([{ id: "1", text: "Xin chào! Bạn cần tư vấn về vấn đề gì?", isUser: false }]);
         }
@@ -378,8 +386,6 @@ export default function Home() {
 
       const data = await response.json();
 
-      setMessages((prev) => prev.filter((m) => m.id !== typingId));
-
       // Cập nhật session_id nếu backend tạo mới
       if (data.session_id && data.session_id !== currentSessionId) {
         setCurrentSessionId(data.session_id);
@@ -391,15 +397,35 @@ export default function Home() {
 
       if (data.error) {
         const errorText = data.error.includes("Tin nhắn bị từ chối") ? data.error : `Lỗi: ${data.error}`;
-        setMessages((prev) => [
-          ...prev,
-          { id: Date.now().toString(), text: errorText, isUser: false },
-        ]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === typingId)) {
+            return prev.map((m) =>
+              m.id === typingId
+                ? { ...m, text: errorText, isTyping: false }
+                : m
+            );
+          } else {
+            return [
+              ...prev,
+              { id: Date.now().toString(), text: errorText, isUser: false },
+            ];
+          }
+        });
       } else {
-        setMessages((prev) => [
-          ...prev,
-          { id: Date.now().toString(), text: data.text, isUser: false, sources: data.sources },
-        ]);
+        setMessages((prev) => {
+          if (prev.some((m) => m.id === typingId)) {
+            return prev.map((m) =>
+              m.id === typingId
+                ? { ...m, text: data.text, isTyping: false, sources: data.sources }
+                : m
+            );
+          } else {
+            return [
+              ...prev,
+              { id: Date.now().toString(), text: data.text, isUser: false, sources: data.sources },
+            ];
+          }
+        });
 
         if (data.tax_table) {
           setTaxData(data.tax_table);
@@ -411,11 +437,20 @@ export default function Home() {
         }
       }
     } catch (error) {
-      setMessages((prev) => prev.filter((m) => m.id !== typingId));
-      setMessages((prev) => [
-        ...prev,
-        { id: Date.now().toString(), text: "Xin lỗi, đã có lỗi kết nối đến máy chủ API.", isUser: false },
-      ]);
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === typingId)) {
+          return prev.map((m) =>
+            m.id === typingId
+              ? { ...m, text: "Xin lỗi, đã có lỗi kết nối đến máy chủ API.", isTyping: false }
+              : m
+          );
+        } else {
+          return [
+            ...prev,
+            { id: Date.now().toString(), text: "Xin lỗi, đã có lỗi kết nối đến máy chủ API.", isUser: false },
+          ];
+        }
+      });
     }
   };
 

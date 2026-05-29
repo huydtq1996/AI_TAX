@@ -24,22 +24,10 @@ class GeminiService:
 
         # Sanitize prompt to prevent XML injection
         safe_prompt = prompt.replace("<", "&lt;").replace(">", "&gt;") if prompt else ""
-        
-        # Bảng tỷ lệ thuế suất mặc định bổ sung vào ngữ cảnh của AI
-        tax_rates_context = """
-        === BẢNG TỶ LỆ THUẾ SUẤT TRÊN DOANH THU ĐỐI VỚI HỘ/CÁ NHÂN KINH DOANH (Theo Luật 48/2024/QH15 & Nghị định 68/2026/NĐ-CP):
-        1. Phân phối, cung cấp hàng hóa (Bán buôn, bán lẻ...): GTGT 1%, TNCN 0.5%
-        2. Dịch vụ, xây dựng không bao thầu nguyên vật liệu (Spa, nhà hàng, quán ăn, cafe, tư vấn, sửa chữa...): GTGT 5%, TNCN 2%
-        3. Sản xuất, vận tải, dịch vụ có gắn hàng hóa (Gia công, vận tải, xây dựng có bao thầu...): GTGT 3%, TNCN 1.5%
-        4. Hoạt động kinh doanh khác: GTGT 2%, TNCN 1%
-        5. Cho thuê tài sản, đại lý bảo hiểm, xổ số, dịch vụ nội dung số: GTGT 5%, TNCN 5%
-        """
 
         full_prompt = f"""
         Ngữ cảnh pháp lý (Cơ sở tri thức):
         {context}
-        
-        {tax_rates_context}
         
         Bạn là một chuyên gia tư vấn thuế tại Việt Nam. Hãy trả lời câu hỏi của người dùng nằm bên trong thẻ <user_input> dưới đây theo các nguyên tắc nghiêm ngặt sau:
         
@@ -58,7 +46,7 @@ class GeminiService:
         7. Trình bày câu trả lời chuyên nghiệp, rành mạch bằng định dạng Markdown. BẮT BUỘC sử dụng Bảng (Table) Markdown để so sánh nếu có sự thay đổi giữa luật cũ và luật mới hoặc để trình bày các số liệu tính toán chi tiết. Không dùng ký tự gạch nối để vẽ bảng giả.
         8. ĐẶC BIỆT: Luôn dùng tool TaxCalculator để tính thuế. Nếu trong ngữ cảnh có cung cấp "Kết quả tính thuế sơ bộ" (do hệ thống tự tính), bạn chỉ cần giải thích ý nghĩa của các con số đó một cách ngắn gọn, súc tích và dễ hiểu nhất (khoảng 2-3 câu). Tuyệt đối không giải thích dài dòng hay chép lại toàn bộ công thức.
         """
-        
+
         for attempt in range(3):
             try:
                 contents = []

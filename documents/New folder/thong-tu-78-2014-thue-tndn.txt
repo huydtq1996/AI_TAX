@@ -1,0 +1,102 @@
+THÔNG TƯ 78/2014/TT-BTC
+Hướng dẫn thi hành Nghị định 218/2013/NĐ-CP hướng dẫn Luật Thuế thu nhập doanh nghiệp
+Ngày ban hành: 18/06/2014
+Ngày hiệu lực: 02/08/2014
+Cơ quan ban hành: Bộ Tài chính
+Sửa đổi bổ sung: Thông tư 96/2015/TT-BTC, Thông tư 25/2018/TT-BTC
+
+====================================================================
+CHƯƠNG I: QUY ĐỊNH CHUNG
+====================================================================
+
+Điều 1. Phạm vi áp dụng
+Thông tư hướng dẫn về thuế TNDN cho: doanh nghiệp; tổ chức có hoạt động sản xuất kinh doanh; đơn vị sự nghiệp; hợp tác xã.
+
+====================================================================
+CHƯƠNG II: DOANH THU VÀ CHI PHÍ
+====================================================================
+
+Điều 5. Doanh thu tính thuế TNDN
+1. Doanh thu = toàn bộ tiền bán hàng, tiền gia công, tiền dịch vụ.
+2. Thời điểm xác định: khi chuyển giao quyền sở hữu hàng hóa hoặc hoàn thành dịch vụ.
+3. Doanh thu bằng ngoại tệ: quy đổi theo tỷ giá tại thời điểm phát sinh.
+
+Điều 6. Chi phí được trừ khi xác định thu nhập chịu thuế
+Điều kiện khấu trừ chi phí:
+1. Khoản chi thực tế phát sinh liên quan đến hoạt động SXKD.
+2. Có đủ hóa đơn, chứng từ hợp pháp.
+3. Thanh toán không dùng tiền mặt cho hóa đơn từ 20 triệu đồng trở lên.
+
+Các khoản chi phí cụ thể:
+a) Chi phí khấu hao tài sản cố định:
+   - TSCĐ phải được quản lý, sử dụng, theo dõi.
+   - Phương pháp: đường thẳng, số dư giảm dần, sản lượng.
+   - Xe ô tô dưới 9 chỗ: mức trích khấu hao tối đa 1,6 tỷ đồng.
+
+b) Chi phí tiền lương, tiền công:
+   - Chi trả cho người lao động có hợp đồng lao động.
+   - Phải có bảng thanh toán lương, giấy ủy nhiệm chi.
+   - Chi quỹ dự phòng tiền lương: không quá 17% quỹ lương thực tế.
+
+c) Chi phí nguyên vật liệu:
+   - Có hóa đơn mua hàng.
+   - Phiếu xuất kho, nhập kho.
+   - Hao hụt trong định mức.
+
+d) Chi phí dịch vụ mua ngoài:
+   - Tiền điện, nước, điện thoại, internet.
+   - Thuê nhà, thuê mặt bằng.
+   - Thuê xe, máy móc.
+   - Phí dịch vụ ngân hàng.
+
+e) Chi phí quảng cáo, khuyến mại, tiếp khách:
+   - Không quá 15% tổng chi phí được trừ (trừ quảng cáo, khuyến mại: không quá 10%).
+   - Năm đầu thành lập: không quá 15%.
+   - Lĩnh vực thương mại: không hạn chế.
+
+f) Lãi vay:
+   - Lãi vay từ tổ chức tín dụng: được trừ toàn bộ.
+   - Lãi vay từ tổ chức/cá nhân không phải tổ chức tín dụng: không vượt 150% lãi suất cơ bản NHNN.
+   - Lãi vay liên quan đến giao dịch liên kết: tuân thủ NĐ 132/2020/NĐ-CP.
+
+Điều 7. Các khoản chi phí KHÔNG được trừ (chi tiết)
+1. Chi không có hóa đơn, chứng từ (hoặc chứng từ không hợp lệ).
+2. Tiền phạt vi phạm hành chính, phạt vi phạm hợp đồng.
+3. Chi lãi vay tương ứng với vốn điều lệ chưa góp đủ.
+4. Phần trích khấu hao TSCĐ vượt mức quy định.
+5. Chi cho hoạt động giáo dục nghề nghiệp: không có hồ sơ.
+6. Chi phí không phục vụ hoạt động SXKD.
+7. Thuế GTGT đầu vào đã được khấu trừ hoặc hoàn.
+8. Phần chi phí quản lý kinh doanh phân bổ cho cơ sở thường trú từ nước ngoài vượt mức.
+9. Phần chi tài trợ giáo dục, y tế, khắc phục hậu quả thiên tai không đúng đối tượng.
+
+====================================================================
+CHƯƠNG III: THUẾ SUẤT VÀ PHƯƠNG PHÁP TÍNH
+====================================================================
+
+Điều 11. Thuế suất
+1. Thuế suất phổ thông: 20%.
+2. Doanh nghiệp thăm dò, khai thác dầu khí: 32%-50%.
+3. Doanh nghiệp khai thác tài nguyên quý hiếm: 40%-50%.
+
+Điều 12. Phương pháp tính thuế
+Thuế TNDN = Thu nhập tính thuế × Thuế suất
+
+Thu nhập tính thuế = Doanh thu - Chi phí được trừ + Thu nhập khác - Thu nhập miễn thuế - Lỗ các năm trước chuyển sang
+
+====================================================================
+CHƯƠNG IV: ƯU ĐÃI THUẾ
+====================================================================
+
+Điều 18. Điều kiện ưu đãi thuế
+1. Dự án đầu tư mới:
+   - Tại địa bàn ưu đãi đầu tư.
+   - Lĩnh vực ưu đãi: công nghệ cao, môi trường, giáo dục, y tế.
+2. Dự án đầu tư mở rộng:
+   - Tăng công suất từ 20% trở lên.
+   - Nâng cấp công nghệ.
+
+Điều 19. Danh mục địa bàn ưu đãi đầu tư
+1. Địa bàn đặc biệt khó khăn: các huyện miền núi, vùng sâu, vùng xa, biên giới, hải đảo.
+2. Địa bàn khó khăn: các huyện thuộc tỉnh miền Trung, Tây Nguyên, Đồng bằng sông Cửu Long.
+3. Khu kinh tế, khu công nghệ cao.

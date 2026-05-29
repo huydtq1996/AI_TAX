@@ -1,0 +1,99 @@
+THÔNG TƯ 219/2013/TT-BTC
+Hướng dẫn thi hành Luật Thuế giá trị gia tăng và Nghị định 209/2013/NĐ-CP
+Ngày ban hành: 31/12/2013
+Ngày hiệu lực: 01/01/2014
+Cơ quan ban hành: Bộ Tài chính
+Sửa đổi bổ sung: Thông tư 119/2014, 151/2014, 26/2015, 130/2016, 173/2016, 25/2018
+
+====================================================================
+CHƯƠNG I: ĐỐI TƯỢNG CHỊU THUẾ, KHÔNG CHỊU THUẾ
+====================================================================
+
+Điều 4. Đối tượng không chịu thuế GTGT (chi tiết)
+1. Sản phẩm nông nghiệp chưa chế biến (lúa, ngô, khoai, sắn, rau, quả tươi).
+2. Sản phẩm chăn nuôi (gia súc, gia cầm, trứng, sữa tươi chưa chế biến).
+3. Sản phẩm thủy sản chưa chế biến (tôm, cá, mực tươi sống, đông lạnh chưa chế biến).
+4. Dịch vụ tín dụng (cho vay, bảo lãnh, chiết khấu).
+5. Kinh doanh chứng khoán.
+6. Bảo hiểm nhân thọ, bảo hiểm sức khỏe.
+7. Dịch vụ y tế (khám, chữa bệnh, phòng bệnh).
+8. Dạy học, dạy nghề.
+9. Phát sóng truyền hình bằng NSNN.
+10. Vận tải công cộng bằng xe buýt, tàu điện.
+11. Dịch vụ công ích: vệ sinh môi trường, cấp nước sạch nông thôn.
+12. Hàng hóa nhập khẩu trong trường hợp viện trợ, viện trợ nhân đạo.
+13. Hàng hóa chuyển khẩu, tạm nhập tái xuất, quá cảnh.
+
+====================================================================
+CHƯƠNG II: CĂN CỨ VÀ PHƯƠNG PHÁP TÍNH THUẾ
+====================================================================
+
+Điều 7. Giá tính thuế GTGT (chi tiết)
+1. Hàng hóa do cơ sở sản xuất bán ra:
+   - Giá tính thuế = Giá bán chưa có thuế GTGT.
+   - Nếu giá bán đã bao gồm thuế GTGT: Giá tính thuế = Giá bán / (1 + thuế suất).
+
+2. Hàng hóa nhập khẩu:
+   - Giá tính thuế = Giá CIF + Thuế NK + Thuế TTĐB (nếu có).
+
+3. Hoạt động cho thuê:
+   - Giá tính thuế = Giá cho thuê chưa thuế GTGT.
+   - Trả tiền thuê nhiều kỳ: giá tính theo kỳ thanh toán.
+
+4. Hoạt động xây dựng:
+   - Giá tính thuế = Giá trị công trình/hạng mục nghiệm thu chưa thuế GTGT.
+   - Xây dựng có bao thầu NVL: giá tính thuế bao gồm cả giá trị NVL.
+
+5. Kinh doanh bất động sản:
+   - Giá tính thuế = Giá bán BĐS - Giá đất (được trừ).
+
+6. Đối với hoạt động đại lý:
+   - Bên giao đại lý: giá tính thuế = giá bán do bên giao quy định.
+   - Bên nhận đại lý: giá tính thuế = hoa hồng đại lý.
+
+====================================================================
+CHƯƠNG III: PHƯƠNG PHÁP KHẤU TRỪ THUẾ
+====================================================================
+
+Điều 12. Điều kiện khấu trừ thuế GTGT đầu vào
+1. Có hóa đơn GTGT hợp pháp.
+2. Có chứng từ thanh toán không dùng tiền mặt (đối với hóa đơn từ 20 triệu đồng trở lên).
+3. Hàng hóa, dịch vụ mua vào phải phục vụ hoạt động sản xuất kinh doanh chịu thuế GTGT.
+
+Điều 14. Nguyên tắc khấu trừ
+1. Thuế GTGT đầu vào dùng cho SXKD chịu thuế GTGT: khấu trừ toàn bộ.
+2. Thuế GTGT đầu vào dùng cho SXKD không chịu thuế GTGT: KHÔNG được khấu trừ.
+3. Thuế GTGT đầu vào dùng chung: phân bổ theo tỷ lệ doanh thu chịu thuế/tổng doanh thu.
+4. Thuế GTGT đầu vào của TSCĐ: khấu trừ toàn bộ (nếu dùng cho SXKD chịu thuế).
+
+====================================================================
+CHƯƠNG IV: HOÀN THUẾ GTGT
+====================================================================
+
+Điều 18. Hoàn thuế cho dự án đầu tư
+1. Cơ sở kinh doanh mới thành lập có dự án đầu tư:
+   - Thuế GTGT đầu vào của giai đoạn đầu tư lũy kế >= 300 triệu đồng → được hoàn thuế.
+2. Cơ sở kinh doanh đang hoạt động có dự án đầu tư mở rộng:
+   - Thuế GTGT đầu vào phát sinh trong giai đoạn đầu tư mở rộng → được hoàn thuế.
+
+Điều 19. Hoàn thuế cho hàng xuất khẩu
+1. Trong tháng/quý có hàng xuất khẩu nếu có số thuế GTGT chưa khấu trừ hết từ 300 triệu đồng trở lên → được hoàn thuế.
+2. Hồ sơ: Giấy đề nghị hoàn thuế + Bảng kê hàng hóa xuất khẩu + Tờ khai hải quan + Chứng từ thanh toán qua ngân hàng.
+
+====================================================================
+CHƯƠNG V: HÓA ĐƠN, CHỨNG TỪ
+====================================================================
+
+Điều 23. Sử dụng hóa đơn
+1. Cơ sở kinh doanh nộp thuế theo phương pháp khấu trừ: sử dụng hóa đơn GTGT.
+2. Cơ sở kinh doanh nộp thuế theo phương pháp trực tiếp: sử dụng hóa đơn bán hàng.
+3. Hộ kinh doanh nộp thuế khoán: được cơ quan thuế cấp hóa đơn lẻ theo từng lần phát sinh.
+
+Nội dung bắt buộc trên hóa đơn:
+- Tên, địa chỉ, MST người bán.
+- Tên, địa chỉ, MST người mua.
+- Tên hàng hóa, dịch vụ.
+- Đơn vị tính, số lượng, đơn giá.
+- Thành tiền chưa thuế GTGT.
+- Thuế suất GTGT, tiền thuế GTGT.
+- Tổng tiền thanh toán.
