@@ -15,19 +15,23 @@ Dự án được xây dựng dựa trên sơ đồ quy trình, sử dụng AI (
 ```
 AI_TAX/
 ├── backend/              # Python Flask API
-│   ├── app.py            # Server chính quản lý API Endpoints
-│   ├── services/         # Dịch vụ xử lý (Gemini, Supabase, TaxCalculator, Encryption...)
-│   └── requirements.txt  # Thư viện Python (Flask, google-genai, pandas, cryptography...)
+│   ├── app.py            # Server chính
+│   ├── services/         # Logic xử lý (Gemini, Supabase, Tax)
+│   └── requirements.txt  # Dependencies của Python
 ├── frontend/             # Next.js Application
-│   ├── app/              # Trang chính (page.tsx, layout.tsx, globals.css)
-│   ├── utils/            # Supabase client và helpers
-│   ├── next.config.mjs   # Cấu hình Next.js proxy và dev origins
+│   ├── app/              # Trang và Components
+│   ├── public/           # Assets tĩnh
 │   └── package.json      # Dependencies của Node.js
-├── documents/            # Tài liệu luật thuế (PDF dùng để nạp dữ liệu RAG)
+├── documents/            # Tài liệu luật thuế (PDF)
+├── uploads/              # Thư mục chứa dữ liệu do người dùng tải lên
 └── README.md             # Hướng dẫn này
 ```
 
 ## Hướng dẫn cài đặt và chạy thử nghiệm
+### Yêu cầu cài đặt trước
+- Node.js (24.15.0)
+- Python (3.14.4)
+- Ngrok
 
 ### 1. Chạy Backend (Python Flask)
 1. Mở Terminal và di chuyển vào thư mục backend:
@@ -69,7 +73,7 @@ Hệ thống sử dụng Next.js Reverse Proxy để chuyển hướng mọi yê
    ```cmd
    ngrok http 3000
    ```
-2. Khi chia sẻ đường dẫn HTTPS từ Ngrok (ví dụ: `https://xxxx.ngrok-free.app`), Next.js đã được cấu hình tự động cho phép kết nối chéo qua cấu hình `allowedDevOrigins` trong `next.config.mjs` nhằm đảm bảo tính năng Hot Reload và WebSocket hoạt động trơn tru.
+2. Khi chia sẻ đường dẫn HTTPS từ Ngrok (ví dụ: `https://xxxx.ngrok-free.dev`), Next.js đã được cấu hình tự động cho phép kết nối chéo qua cấu hình `allowedDevOrigins` trong `next.config.mjs` nhằm đảm bảo tính năng Hot Reload và WebSocket hoạt động trơn tru.
 
 ## Lưu ý về Bảo mật
 - Tuyệt đối không commit file `.env` của backend hoặc `.env.local` lên GitHub.
