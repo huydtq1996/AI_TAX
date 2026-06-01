@@ -5,6 +5,7 @@ from google import genai
 from google.genai import types
 import time
 from services.encryption_service import EncryptionService
+from services.guard_service import GuardService
 from pydantic import BaseModel, Field
 from typing import List
 
@@ -21,6 +22,7 @@ class GeminiService:
         # Khởi tạo Gemini LLM
         api_key = os.getenv("GEMINI_API_KEY")
         self.encryption_service = EncryptionService()
+        self.guard_service = GuardService()
         if api_key:
             self.client = genai.Client(api_key=api_key)
             self.model_name = 'gemini-2.5-flash'
@@ -33,7 +35,7 @@ class GeminiService:
             return "Lỗi: Chưa cấu hình GEMINI_API_KEY."
 
         # Làm sạch (sanitize) prompt để ngăn chặn XML injection
-        safe_prompt = prompt.replace("<", "&lt;").replace(">", "&gt;") if prompt else ""
+        safe_prompt = self.guard_service.sanitize_input(prompt)
 
         full_prompt = f"""
         Ngữ cảnh pháp lý (Cơ sở tri thức):
@@ -46,7 +48,7 @@ class GeminiService:
         </user_input>
         
         CÁC NGUYÊN TẮC BẮT BUỘC:
-        0. Nếu câu hỏi không liên quan đến luật/nghị định/thông tư về thuế, kế toán hoặc doanh nghiệp, hãy từ chối lịch sự: "Đây là chatbot về thuế!".
+        0. Nếu câu hỏi không liên quan đến luật/nghị định/thông tư về thuế, kế toán hoặc doanh nghiệp (ngoại trừ các câu chào hỏi xã giao hoặc cảm ơn thông thường), hãy từ chối lịch sự: "Đây là chatbot về thuế!".
         1. Tuyệt đối KHÔNG tự suy diễn hoặc bịa đặt nội dung ngoài những gì được cung cấp. Chỉ trả lời dựa trên 'Ngữ cảnh pháp lý' và 'Bảng tỷ lệ thuế suất trên doanh thu' được cung cấp ở trên.
         2. QUY TẮC ÁP DỤNG LUẬT MỚI (ƯU TIÊN VĂN BẢN MỚI NHẤT): Văn bản nào ban hành SAU (năm lớn hơn, hoặc ngày mới hơn) sẽ có giá trị áp dụng ưu tiên nhất, BẤT KỂ loại văn bản là gì (Luật, Nghị định, Thông tư...). Tuyệt đối KHÔNG tự động lập luận rằng 'Luật có giá trị pháp lý cao hơn Nghị định/Thông tư' để bỏ qua văn bản mới hơn. Nếu Nghị định/Nghị quyết có năm/ngày ban hành MỚI HƠN quy định khác với Luật gốc, bạn BẮT BUỘC phải áp dụng số liệu của văn bản mới hơn đó.
         3. QUY TẮC SỬA ĐỔI/BỔ SUNG (QUAN TRỌNG): Nếu trong ngữ cảnh có phần "THÔNG TIN SỬA ĐỔI/BỔ SUNG", bạn BẮT BUỘC phải đối chiếu Điều/Khoản tương ứng giữa văn bản gốc và văn bản sửa đổi. Hãy trình bày một cách vô cùng ngắn gọn các điểm mới nhất đang được áp dụng. (Ví dụ: nếu Điều 2 Nghị định 126 sửa đổi Điều 6 Nghị định 139 thì phải áp dụng quy định tại Điều 2 NĐ 126 cho nội dung liên quan đến Điều 6 NĐ 139)

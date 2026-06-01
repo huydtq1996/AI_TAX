@@ -98,6 +98,33 @@ def chat():
             "error": "Tin nhắn bị từ chối: Phát hiện nội dung không hợp lệ"
         }), 403
         
+    # 1.1 Kiểm tra sự liên quan của câu hỏi (AI Check 0) trước khi chạy RAG
+    # Bỏ qua từ chối nếu người dùng có tải lên file đi kèm
+    is_relevant = True
+    if user_message and not file:
+        relevance = guard_service.check_relevance(user_message, gemini_service)
+        if relevance == "UNRELATED":
+            ai_response = "Đây là chatbot về thuế!"
+            
+            # Tạo Session nếu chưa có
+            if user_token and not session_id:
+                title = user_message[:40] + "..."
+                session_id = supabase_service.create_session(title, user_token)
+                
+            # Lưu tin nhắn User & AI vào DB
+            if user_token and session_id:
+                supabase_service.save_message(session_id, 'user', user_message, user_token)
+                supabase_service.save_message(session_id, 'assistant', ai_response, user_token)
+                
+            return jsonify({
+                "text": ai_response,
+                "tax_table": None,
+                "session_id": session_id,
+                "sources": []
+            })
+        elif relevance == "GREETING":
+            is_relevant = False
+
     # Tạo Session nếu chưa có
     if user_token and not session_id:
         title = user_message[:40] + "..." if user_message else "Kế hoạch Thuế"
@@ -123,7 +150,7 @@ def chat():
     # 2. RAG - Lấy ngữ cảnh luật thuế
     legal_context = ""
     sources = []
-    if guard_service.needs_rag(user_message):
+    if is_relevant and guard_service.needs_rag(user_message):
         # Chuyển đổi câu hỏi của user thành Vector
         query_vector = gemini_service.embed_text(user_message)
         legal_context, sources = supabase_service.search_tax_laws(query_vector)
