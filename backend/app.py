@@ -28,7 +28,7 @@ def get_client_ip():
         return request.headers.getlist("X-Forwarded-For")[0]
     return request.remote_addr
 
-def limit_requests(max_requests=10, window_seconds=60):
+def limit_requests(max_requests=20, window_seconds=60):
     def decorator(f):
         @wraps(f)
         def wrapped(*args, **kwargs):
