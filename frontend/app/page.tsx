@@ -2080,7 +2080,7 @@ export default function Home() {
                           </div>
                         </div>
                       ) : (
-                        <>
+                        <div className="message-content-fade-in">
                           {renderFormattedText(msg.text)}
 
                           {msg.sources && msg.sources.length > 0 && (
@@ -2132,7 +2132,7 @@ export default function Home() {
                               </details>
                             </div>
                           )}
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
