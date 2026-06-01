@@ -411,3 +411,286 @@ class SupabaseService:
         except Exception as e:
             print(f"Exception fetching user files: {e}")
         return []
+
+    def get_business_settings(self, user_token):
+        if not self.url or not self.key or not user_token:
+            return {"business_name": "Mimimart", "business_category": "ban_buon_ban_le", "declaration_type": "quy"}
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/business_settings", 
+                headers=headers
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data and len(data) > 0:
+                    record = data[0]
+                    # Giải mã dữ liệu (hỗ trợ fallback nếu dữ liệu cũ chưa mã hóa)
+                    dec_name = self.encryption_service.decrypt_text(record["business_name"])
+                    if dec_name == "[Lỗi giải mã nội dung]":
+                        dec_name = record["business_name"]
+                    record["business_name"] = dec_name
+                    
+                    dec_cat = self.encryption_service.decrypt_text(record["business_category"])
+                    if dec_cat == "[Lỗi giải mã nội dung]":
+                        dec_cat = record["business_category"]
+                    record["business_category"] = dec_cat
+                    
+                    dec_type = self.encryption_service.decrypt_text(record.get("declaration_type", ""))
+                    if dec_type == "[Lỗi giải mã nội dung]" or not dec_type:
+                        dec_type = record.get("declaration_type", "quy")
+                    record["declaration_type"] = dec_type
+                    return record
+                else:
+                    # Tạo cấu hình mặc định (mã hóa trước khi gửi đi)
+                    enc_name = self.encryption_service.encrypt_text("Mimimart")
+                    enc_cat = self.encryption_service.encrypt_text("ban_buon_ban_le")
+                    enc_type = self.encryption_service.encrypt_text("quy")
+                    create_resp = requests.post(
+                        f"{self.url}/rest/v1/business_settings",
+                        headers={**headers, "Prefer": "return=representation"},
+                        json={"business_name": enc_name, "business_category": enc_cat, "declaration_type": enc_type}
+                    )
+                    if create_resp.status_code in (200, 201):
+                          create_data = create_resp.json()
+                          if create_data and len(create_data) > 0:
+                              record = create_data[0]
+                              record["business_name"] = "Mimimart"
+                              record["business_category"] = "ban_buon_ban_le"
+                              record["declaration_type"] = "quy"
+                              return record
+            else:
+                print(f"Error fetching business settings: {response.text}")
+        except Exception as e:
+            print(f"Exception fetching business settings: {e}")
+        return {"business_name": "Mimimart", "business_category": "ban_buon_ban_le", "declaration_type": "quy"}
+
+    def update_business_settings(self, user_token, business_name, business_category, declaration_type="quy"):
+        if not self.url or not self.key or not user_token:
+            return False
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            # First fetch to get the record ID
+            settings = self.get_business_settings(user_token)
+            if not settings or "id" not in settings:
+                return False
+            
+            settings_id = settings["id"]
+            # Mã hóa dữ liệu trước khi cập nhật
+            enc_name = self.encryption_service.encrypt_text(business_name)
+            enc_cat = self.encryption_service.encrypt_text(business_category)
+            enc_type = self.encryption_service.encrypt_text(declaration_type)
+            
+            # Try to update with declaration_type
+            response = requests.patch(
+                f"{self.url}/rest/v1/business_settings?id=eq.{settings_id}",
+                headers=headers,
+                json={
+                    "business_name": enc_name, 
+                    "business_category": enc_cat,
+                    "declaration_type": enc_type
+                }
+            )
+            if response.status_code not in (200, 204):
+                # Fallback if declaration_type column does not exist yet
+                response = requests.patch(
+                    f"{self.url}/rest/v1/business_settings?id=eq.{settings_id}",
+                    headers=headers,
+                    json={
+                        "business_name": enc_name, 
+                        "business_category": enc_cat
+                    }
+                )
+            return response.status_code in (200, 204)
+        except Exception as e:
+            print(f"Exception updating business settings: {e}")
+        return False
+
+    def get_transactions(self, user_token):
+        if not self.url or not self.key or not user_token:
+            return []
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/transactions?order=date.desc,created_at.desc", 
+                headers=headers
+            )
+            if response.status_code == 200:
+                txs = response.json()
+                # Giải mã từng giao dịch (hỗ trợ fallback nếu dữ liệu cũ chưa mã hóa)
+                for tx in txs:
+                    if "amount" in tx and tx["amount"]:
+                        dec_amount = self.encryption_service.decrypt_text(tx["amount"])
+                        if dec_amount == "[Lỗi giải mã nội dung]":
+                            dec_amount = tx["amount"]
+                        try:
+                            tx["amount"] = float(dec_amount)
+                        except ValueError:
+                            tx["amount"] = 0.0
+                    if "description" in tx and tx["description"]:
+                        dec_desc = self.encryption_service.decrypt_text(tx["description"])
+                        if dec_desc == "[Lỗi giải mã nội dung]":
+                            dec_desc = tx["description"]
+                        tx["description"] = dec_desc
+                return txs
+            else:
+                print(f"Error fetching transactions: {response.text}")
+        except Exception as e:
+            print(f"Exception fetching transactions: {e}")
+        return []
+
+    def add_transaction(self, user_token, date, amount, description):
+        if not self.url or not self.key or not user_token:
+            return None
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
+        # Mã hóa trước khi lưu
+        enc_amount = self.encryption_service.encrypt_text(str(amount))
+        enc_desc = self.encryption_service.encrypt_text(description)
+        data = {
+            "date": date,
+            "amount": enc_amount,
+            "description": enc_desc
+        }
+        try:
+            response = requests.post(
+                f"{self.url}/rest/v1/transactions", 
+                headers=headers, 
+                json=data
+            )
+            if response.status_code in (200, 201):
+                res = response.json()
+                if res and len(res) > 0:
+                    tx = res[0]
+                    tx["amount"] = amount
+                    tx["description"] = description
+                    return tx
+            else:
+                print(f"Error adding transaction: {response.text}")
+        except Exception as e:
+            print(f"Exception adding transaction: {e}")
+        return None
+
+    def update_transaction(self, user_token, transaction_id, date, amount, description):
+        if not self.url or not self.key or not user_token or not transaction_id:
+            return False
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        # Mã hóa trước khi cập nhật
+        enc_amount = self.encryption_service.encrypt_text(str(amount))
+        enc_desc = self.encryption_service.encrypt_text(description)
+        data = {
+            "date": date,
+            "amount": enc_amount,
+            "description": enc_desc
+        }
+        try:
+            response = requests.patch(
+                f"{self.url}/rest/v1/transactions?id=eq.{transaction_id}", 
+                headers=headers, 
+                json=data
+            )
+            return response.status_code in (200, 204)
+        except Exception as e:
+            print(f"Exception updating transaction: {e}")
+        return False
+
+    def delete_transaction(self, user_token, transaction_id):
+        if not self.url or not self.key or not user_token or not transaction_id:
+            return False
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.delete(
+                f"{self.url}/rest/v1/transactions?id=eq.{transaction_id}", 
+                headers=headers
+            )
+            return response.status_code in (200, 204)
+        except Exception as e:
+            print(f"Exception deleting transaction: {e}")
+        return False
+
+    def get_tax_payments(self, user_token):
+        if not self.url or not self.key or not user_token:
+            return []
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            response = requests.get(
+                f"{self.url}/rest/v1/tax_payments", 
+                headers=headers
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Error fetching tax payments: {response.text}")
+        except Exception as e:
+            print(f"Exception fetching tax payments: {e}")
+        return []
+
+    def update_tax_payment(self, user_token, period_key, due_date, tax_amount, paid_amount, paid_date):
+        if not self.url or not self.key or not user_token:
+            return False
+        headers = {
+            "apikey": self.key, 
+            "Authorization": f"Bearer {user_token}", 
+            "Content-Type": "application/json"
+        }
+        try:
+            # Check if it already exists
+            check_resp = requests.get(
+                f"{self.url}/rest/v1/tax_payments?period_key=eq.{period_key}",
+                headers=headers
+            )
+            data = check_resp.json() if check_resp.status_code == 200 else []
+            
+            payload = {
+                "period_key": period_key,
+                "due_date": due_date,
+                "tax_amount": tax_amount,
+                "paid_amount": paid_amount,
+                "paid_date": paid_date if paid_date else None
+            }
+            
+            if data and len(data) > 0:
+                record_id = data[0]["id"]
+                response = requests.patch(
+                    f"{self.url}/rest/v1/tax_payments?id=eq.{record_id}",
+                    headers=headers,
+                    json=payload
+                )
+            else:
+                response = requests.post(
+                    f"{self.url}/rest/v1/tax_payments",
+                    headers=headers,
+                    json=payload
+                )
+            return response.status_code in (200, 201, 204)
+        except Exception as e:
+            print(f"Exception updating tax payment: {e}")
+        return False

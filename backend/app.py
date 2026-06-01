@@ -311,5 +311,209 @@ def delete_file(filename):
         return jsonify({"message": f"Deleted {filename}"})
     return jsonify({"error": "File not found"}), 404
 
+@app.route('/api/business-settings', methods=['GET'])
+@limit_requests(30, 60)
+def get_business_settings():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    settings = supabase_service.get_business_settings(user_token)
+    return jsonify(settings)
+
+@app.route('/api/business-settings', methods=['POST'])
+@limit_requests(30, 60)
+def update_business_settings():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.json.get('supabase_token') if (request.is_json and request.json) else request.form.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form
+        
+    business_name = data.get('business_name')
+    business_category = data.get('business_category')
+    declaration_type = data.get('declaration_type', 'quy')
+    
+    if not business_name or not business_category:
+        return jsonify({"error": "business_name and business_category are required"}), 400
+        
+    success = supabase_service.update_business_settings(user_token, business_name, business_category, declaration_type)
+    if success:
+        return jsonify({"message": "Business settings updated successfully"})
+    else:
+        return jsonify({"error": "Failed to update business settings"}), 500
+
+@app.route('/api/transactions', methods=['GET'])
+@limit_requests(30, 60)
+def get_transactions():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    transactions = supabase_service.get_transactions(user_token)
+    return jsonify(transactions)
+
+@app.route('/api/transactions', methods=['POST'])
+@limit_requests(30, 60)
+def add_transaction():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.json.get('supabase_token') if (request.is_json and request.json) else request.form.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form
+        
+    date = data.get('date')
+    amount_val = data.get('amount')
+    description = data.get('description', '')
+    
+    if not date or amount_val is None:
+        return jsonify({"error": "date and amount are required"}), 400
+        
+    try:
+        amount = float(amount_val)
+    except ValueError:
+        return jsonify({"error": "amount must be a number"}), 400
+        
+    transaction = supabase_service.add_transaction(user_token, date, amount, description)
+    if transaction:
+        return jsonify(transaction)
+    else:
+        return jsonify({"error": "Failed to add transaction"}), 500
+
+@app.route('/api/transactions/<transaction_id>', methods=['PUT'])
+@limit_requests(30, 60)
+def update_transaction(transaction_id):
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.json.get('supabase_token') if (request.is_json and request.json) else request.form.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form
+        
+    date = data.get('date')
+    amount_val = data.get('amount')
+    description = data.get('description', '')
+    
+    if not date or amount_val is None:
+        return jsonify({"error": "date and amount are required"}), 400
+        
+    try:
+        amount = float(amount_val)
+    except ValueError:
+        return jsonify({"error": "amount must be a number"}), 400
+        
+    success = supabase_service.update_transaction(user_token, transaction_id, date, amount, description)
+    if success:
+        return jsonify({"message": "Transaction updated successfully"})
+    else:
+        return jsonify({"error": "Failed to update transaction"}), 500
+
+@app.route('/api/transactions/<transaction_id>', methods=['DELETE'])
+@limit_requests(30, 60)
+def delete_transaction(transaction_id):
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    success = supabase_service.delete_transaction(user_token, transaction_id)
+    if success:
+        return jsonify({"message": "Transaction deleted successfully"})
+    else:
+        return jsonify({"error": "Failed to delete transaction"}), 500
+
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
+@app.route('/api/tax-payments', methods=['GET'])
+@limit_requests(30, 60)
+def get_tax_payments():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    payments = supabase_service.get_tax_payments(user_token)
+    return jsonify(payments)
+
+@app.route('/api/tax-payments', methods=['POST'])
+@limit_requests(30, 60)
+def update_tax_payment():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.json.get('supabase_token') if (request.is_json and request.json) else request.form.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form
+        
+    period_key = data.get('period_key')
+    due_date = data.get('due_date')
+    tax_amount = data.get('tax_amount', 0)
+    paid_amount = data.get('paid_amount', 0)
+    paid_date = data.get('paid_date')
+    
+    if not period_key or not due_date:
+        return jsonify({"error": "period_key and due_date are required"}), 400
+        
+    success = supabase_service.update_tax_payment(user_token, period_key, due_date, float(tax_amount), float(paid_amount), paid_date)
+    if success:
+        return jsonify({"message": "Tax payment updated successfully"})
+    else:
+        return jsonify({"error": "Failed to update tax payment"}), 500
+

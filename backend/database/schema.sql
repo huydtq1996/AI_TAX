@@ -138,3 +138,103 @@ WITH CHECK (
     AND chat_sessions.user_id = auth.uid()
   )
 );
+
+-- ==============================================================================
+-- BẢNG 4: CẤU HÌNH THÔNG TIN HỘ KINH DOANH
+-- ==============================================================================
+CREATE TABLE business_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL DEFAULT auth.uid(),
+    business_name TEXT NOT NULL DEFAULT 'Mimimart',
+    business_category TEXT NOT NULL DEFAULT 'ban_buon_ban_le',
+    declaration_type TEXT NOT NULL DEFAULT 'quy',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX idx_business_settings_user_id ON business_settings(user_id);
+
+-- ==============================================================================
+-- BẢNG 5: SỔ THU CHI (GIAO DỊCH HẰNG NGÀY)
+-- ==============================================================================
+CREATE TABLE transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+    date DATE NOT NULL DEFAULT CURRENT_DATE,
+    amount TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+CREATE INDEX idx_transactions_user_id ON transactions(user_id);
+CREATE INDEX idx_transactions_date ON transactions(date);
+
+-- Kích hoạt Row Level Security (RLS)
+ALTER TABLE business_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
+
+-- 1. Policies cho business_settings
+CREATE POLICY "Users can view their own business settings"
+ON business_settings FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own business settings"
+ON business_settings FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own business settings"
+ON business_settings FOR UPDATE
+USING (auth.uid() = user_id);
+
+-- 2. Policies cho transactions
+CREATE POLICY "Users can view their own transactions"
+ON transactions FOR SELECT
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own transactions"
+ON transactions FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own transactions"
+ON transactions FOR UPDATE
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own transactions"
+ON transactions FOR DELETE
+TO authenticated
+USING (auth.uid() = user_id);
+
+
+-- ==============================================================================
+-- BẢNG 6: QUẢN LÝ LỊCH NỘP THUẾ
+-- ==============================================================================
+CREATE TABLE tax_payments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL DEFAULT auth.uid(),
+    period_key TEXT NOT NULL,
+    due_date DATE NOT NULL,
+    tax_amount NUMERIC NOT NULL DEFAULT 0,
+    paid_amount NUMERIC DEFAULT 0,
+    paid_date DATE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    UNIQUE (user_id, period_key)
+);
+
+ALTER TABLE tax_payments ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own tax payments"
+ON tax_payments FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own tax payments"
+ON tax_payments FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own tax payments"
+ON tax_payments FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id);
+
