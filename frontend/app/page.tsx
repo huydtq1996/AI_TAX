@@ -75,6 +75,7 @@ export default function Home() {
   const [ledgerFilterType, setLedgerFilterType] = useState<'all' | 'month' | 'day'>('all');
   const [ledgerFilterMonth, setLedgerFilterMonth] = useState(new Date().toISOString().substring(0, 7));
   const [ledgerFilterDay, setLedgerFilterDay] = useState(new Date().toISOString().split('T')[0]);
+  const [ledgerFilterClass, setLedgerFilterClass] = useState<'all' | 'thu' | 'chi'>('all');
 
   // States cho tính năng Lịch nộp thuế
   const [declarationType, setDeclarationType] = useState<string>("quy");
@@ -83,6 +84,7 @@ export default function Home() {
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentPaidAmount, setPaymentPaidAmount] = useState("");
   const [paymentPaidDate, setPaymentPaidDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showTaxDetailModal, setShowTaxDetailModal] = useState(false);
 
   const chatWindowRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -191,6 +193,89 @@ export default function Home() {
     return `${parts[2]}/${parts[1]}/${parts[0]}`;
   };
 
+  // Tính toán thời hạn nộp thuế và số ngày còn lại động
+  const getTaxDeadlineInfo = () => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1; // 1-12
+
+    if (declarationType === 'quy') {
+      // Kê khai theo Quý:
+      // Q1 (tháng 1-3): Hạn là 30/4 của năm đó
+      // Q2 (tháng 4-6): Hạn là 31/7 của năm đó
+      // Q3 (tháng 7-9): Hạn là 31/10 của năm đó
+      // Q4 (tháng 10-12): Hạn là 31/1 của năm sau
+      let targetQ = 1;
+      let targetYear = currentYear;
+      let dueDateStr = "";
+
+      if (currentMonth <= 3) {
+        targetQ = 1;
+        dueDateStr = `${currentYear}-04-30`;
+      } else if (currentMonth <= 6) {
+        targetQ = 2;
+        dueDateStr = `${currentYear}-07-31`;
+      } else if (currentMonth <= 9) {
+        targetQ = 3;
+        dueDateStr = `${currentYear}-10-31`;
+      } else {
+        targetQ = 4;
+        dueDateStr = `${currentYear + 1}-01-31`;
+      }
+
+      const dueDate = new Date(getAdjustedDueDate(dueDateStr));
+      dueDate.setHours(0, 0, 0, 0);
+
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      return {
+        periodLabel: `Quý ${targetQ}/${targetYear}`,
+        dueDate: dueDate.toISOString().split('T')[0],
+        days: diffDays,
+        message: diffDays < 0 
+          ? `Đã quá hạn nộp thuế Quý ${targetQ}/${targetYear}! Quá hạn ${Math.abs(diffDays)} ngày.`
+          : `Sắp đến thời hạn nộp thuế! Hạn chót nộp thuế Quý ${targetQ}/${targetYear} còn ${diffDays} ngày nữa.`
+      };
+    } else if (declarationType === 'thang') {
+      // Kê khai theo Tháng: Hạn nộp là ngày 20 của tháng tiếp theo
+      // Ví dụ: Hôm nay là tháng 6, hạn nộp của tháng 5 là 20/6.
+      let targetMonth = currentMonth - 1;
+      let targetYear = currentYear;
+      if (targetMonth === 0) {
+        targetMonth = 12;
+        targetYear = currentYear - 1;
+      }
+
+      const dueDateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-20`;
+      const dueDate = new Date(getAdjustedDueDate(dueDateStr));
+      dueDate.setHours(0, 0, 0, 0);
+
+      const diffTime = dueDate.getTime() - today.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      const monthLabel = `Tháng ${String(targetMonth).padStart(2, '0')}/${targetYear}`;
+
+      return {
+        periodLabel: monthLabel,
+        dueDate: dueDate.toISOString().split('T')[0],
+        days: diffDays,
+        message: diffDays < 0
+          ? `Đã quá hạn nộp thuế ${monthLabel}! Quá hạn ${Math.abs(diffDays)} ngày.`
+          : `Sắp đến thời hạn nộp thuế! Hạn chót nộp thuế ${monthLabel} còn ${diffDays} ngày nữa.`
+      };
+    } else {
+      // Từng lần phát sinh: 10 ngày kể từ ngày phát sinh
+      return {
+        periodLabel: "Giao dịch phát sinh",
+        dueDate: today.toISOString().split('T')[0],
+        days: 10,
+        message: "Sắp đến thời hạn nộp thuế! Hót chót nộp thuế theo từng lần phát sinh là 10 ngày."
+      };
+    }
+  };
+
   // Tổng hợp các giao dịch và tạo danh sách các kỳ nộp thuế dựa trên hình thức kê khai
   const getTaxSchedulePeriods = () => {
     const periods: {
@@ -206,7 +291,7 @@ export default function Home() {
     }[] = [];
 
     const categoryRate = getCategoryRate(businessCategory);
-    
+
     // Chỉ lấy giao dịch doanh thu (thu nhập dương) để tính thuế
     const revenueTransactions = transactions.filter(tx => parseFloat(tx.amount || 0) > 0);
 
@@ -1033,48 +1118,68 @@ export default function Home() {
     }
   };
 
-  const handleOcrFileUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleOcrFileUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !userToken) return;
 
-    setIsOcrLoading(true);
-    setTimeout(async () => {
-      const mockDescriptions = [
-        "Hóa đơn lẻ mua hàng hóa",
-        "Doanh thu dịch vụ cafe & đồ uống",
-        "Hóa đơn bán lẻ Mimimart",
-        "Doanh thu bán lẻ thuốc & mỹ phẩm",
-        "Doanh thu dịch vụ sửa chữa thiết bị"
-      ];
-      const mockAmounts = [450000, 1200000, 750000, 320000, 1500000];
-      const randIdx = Math.floor(Math.random() * mockDescriptions.length);
-      const randDesc = mockDescriptions[randIdx] + ` (AI OCR: ${file.name})`;
-      const randAmount = mockAmounts[randIdx];
-      const today = new Date().toISOString().split('T')[0];
+    const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSizeBytes) {
+      alert("Kích thước tệp tin không được vượt quá 5MB.");
+      e.target.value = '';
+      return;
+    }
 
-      try {
-        const response = await fetch('/api/transactions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            supabase_token: userToken,
-            date: today,
-            amount: randAmount,
-            description: randDesc
-          })
-        });
-        if (response.ok) {
-          fetchTransactions(userToken);
-          alert(`Trích xuất AI OCR thành công!\n+ Đã thêm giao dịch: "${randDesc}" với số tiền ${formatVND(randAmount)}`);
-        } else {
-          alert("Lỗi trích xuất thông tin giao dịch.");
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsOcrLoading(false);
+    setIsOcrLoading(true);
+    
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("supabase_token", userToken);
+
+    try {
+      const response = await fetch('/api/transactions/ocr', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        fetchTransactions(userToken);
+        fetchTaxPayments(userToken);
+        alert(data.message || "Tự động trích xuất và lưu giao dịch thành công!");
+      } else {
+        alert(data.error || "Gặp lỗi trong quá trình xử lý tệp tin.");
       }
-    }, 2000);
+    } catch (err) {
+      console.error("Lỗi trích xuất OCR:", err);
+      alert("Lỗi kết nối đến máy chủ khi xử lý tệp tin.");
+    } finally {
+      setIsOcrLoading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleDownloadTemplate = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Ngăn sự kiện click lan truyền lên ocr-upload-zone
+    try {
+      const response = await fetch('/api/transactions/template');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Không thể tải file mẫu.");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", "mau_so_tay_giao_dich.xlsx");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Lỗi tải template:", err);
+      alert(err.message || "Gặp lỗi khi tải tệp tin mẫu.");
+    }
   };
 
 
@@ -1082,7 +1187,14 @@ export default function Home() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      const maxSizeBytes = 5 * 1024 * 1024; // 5MB
+      if (file.size > maxSizeBytes) {
+        alert("Kích thước tệp tin không được vượt quá 5MB.");
+        e.target.value = '';
+        return;
+      }
+      setSelectedFile(file);
     }
     e.target.value = '';
   };
@@ -1280,6 +1392,41 @@ export default function Home() {
     // Tính thuế dự kiến tháng này theo tax_calculator (nếu doanh thu dưới ngưỡng chịu thuế thì bằng 0)
     const monthlyTax = isTaxExempt ? 0 : monthlyRevenue * getCategoryRate(businessCategory);
 
+    const getDetailedTaxCalculation = (revenue: number) => {
+      const detailsMap: any = {
+        ban_buon_ban_le: { gtgt: 0.01, tncn: 0.005, name: "Bán buôn, bán lẻ hàng hóa (tạp hóa, siêu thị mini, v.v.)" },
+        ban_le_thuoc_my_pham: { gtgt: 0.01, tncn: 0.005, name: "Bán lẻ thuốc, dụng cụ y tế, mỹ phẩm" },
+        phan_phoi_cung_cap_hang_hoa: { gtgt: 0.01, tncn: 0.005, name: "Phân phối, cung cấp hàng hóa khác" },
+        nha_hang_quan_an_cafe: { gtgt: 0.05, tncn: 0.02, name: "Dịch vụ lưu trú, nhà hàng, quán ăn, quán cafe" },
+        dich_vu_lam_dep_spa: { gtgt: 0.05, tncn: 0.02, name: "Dịch vụ làm đẹp, cắt tóc, gội đầu, spa, massage" },
+        dich_vu_sua_chua: { gtgt: 0.05, tncn: 0.02, name: "Dịch vụ sửa chữa (máy tính, đồ gia dụng, xe máy)" },
+        dich_vu_tu_van: { gtgt: 0.05, tncn: 0.02, name: "Dịch vụ tư vấn, thiết kế, pháp luật, kế toán" },
+        xay_dung_khong_bao_thau: { gtgt: 0.05, tncn: 0.02, name: "Xây dựng, lắp đặt không bao thầu nguyên vật liệu" },
+        san_xuat_gia_cong: { gtgt: 0.03, tncn: 0.015, name: "Sản xuất, gia công hàng hóa" },
+        van_tai_hang_hoa_hanh_khach: { gtgt: 0.03, tncn: 0.015, name: "Vận tải hàng hóa, vận tải hành khách" },
+        xay_dung_co_bao_thau: { gtgt: 0.03, tncn: 0.015, name: "Xây dựng, lắp đặt có bao thầu nguyên vật liệu" },
+        san_xuat_van_tai_dich_vu_co_hang_hoa: { gtgt: 0.03, tncn: 0.015, name: "Sản xuất, vận tải, dịch vụ có gắn hàng hóa khác" },
+        khai_thac_khoang_san: { gtgt: 0.02, tncn: 0.01, name: "Khai thác tài nguyên, khoáng sản" },
+        san_xuat_ttdb: { gtgt: 0.02, tncn: 0.01, name: "Sản xuất hàng chịu thuế Tiêu thụ đặc biệt" },
+        hoat_dong_khac: { gtgt: 0.02, tncn: 0.01, name: "Hoạt động kinh doanh khác" },
+        cho_thue_tai_san_dai_ly: { gtgt: 0.05, tncn: 0.05, name: "Cho thuê tài sản, đại lý bảo hiểm, xổ số" },
+        dich_vu_noi_dung_so: { gtgt: 0.05, tncn: 0.05, name: "Dịch vụ nội dung thông tin số, quảng cáo số" }
+      };
+      
+      const rate = detailsMap[businessCategory] || { gtgt: 0.02, tncn: 0.01, name: "Hoạt động kinh doanh khác" };
+      const taxGtgt = revenue * rate.gtgt;
+      const taxTncn = revenue * rate.tncn;
+
+      return {
+        categoryName: rate.name,
+        gtgtRate: rate.gtgt,
+        tncnRate: rate.tncn,
+        taxGtgt,
+        taxTncn,
+        totalTax: taxGtgt + taxTncn
+      };
+    };
+
     return (
       <div className="dashboard-layout">
         <div className="dashboard-container">
@@ -1302,14 +1449,15 @@ export default function Home() {
                 <i className="fa-solid fa-circle-check" style={{ color: '#10b981' }}></i>
                 <span>Hộ kinh doanh đang được miễn thuế do doanh thu lũy kế năm dưới 1 tỷ VNĐ.</span>
               </div>
+              <span className="dashboard-alert-link" style={{ color: '#059669' }} onClick={() => setShowTaxDetailModal(true)}>Chi tiết →</span>
             </div>
           ) : (
             <div className="dashboard-alert">
               <div className="dashboard-alert-content">
                 <i className="fa-solid fa-bell"></i>
-                <span>Sắp đến thời hạn nộp thuế! Hạn chót nộp thuế Quý 1 còn 15 ngày nữa.</span>
+                <span>{getTaxDeadlineInfo().message}</span>
               </div>
-              <span className="dashboard-alert-link" onClick={() => setViewMode('chat')}>Chi tiết →</span>
+              <span className="dashboard-alert-link" onClick={() => setShowTaxDetailModal(true)}>Chi tiết →</span>
             </div>
           )}
 
@@ -1363,14 +1511,14 @@ export default function Home() {
               </div>
 
               <button className="action-btn-pill btn-green-grad" onClick={() => { setViewMode('ledger'); handleCancelEditTransaction(); }}>
-                <i className="fa-solid fa-book"></i> Sổ tay giao dịch
+                <i className="fa-solid fa-book"></i> Sổ tay giao dịch Thu / Chi
               </button>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-8px', marginLeft: '20px', marginBottom: '8px' }}>
                 Quản lý doanh thu hằng ngày
               </div>
 
               <button className="action-btn-pill btn-orange-grad" onClick={() => setViewMode('tax_schedule')}>
-                <i className="fa-solid fa-calendar-days"></i> Lịch nộp thuế
+                <i className="fa-solid fa-calendar-days"></i> Lịch nộp thuế & Trạng thái đóng
               </button>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-8px', marginLeft: '20px' }}>
                 Theo dõi thời hạn và cập nhật lịch đóng thuế GTGT + TNCN định kỳ
@@ -1461,6 +1609,132 @@ export default function Home() {
           </div>
         )}
 
+        {showTaxDetailModal && (
+          <div className="glass-modal-overlay" style={{ zIndex: 2000 }}>
+            <div className="glass-modal-card" style={{ maxWidth: '500px' }}>
+              <div className="glass-modal-header">
+                <h3><i className="fa-solid fa-calculator"></i> Chi tiết Công thức tính thuế</h3>
+                <button className="glass-modal-close-btn" onClick={() => setShowTaxDetailModal(false)}>
+                  <i className="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+              <div className="glass-modal-body" style={{ color: '#1e293b', padding: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  
+                  {/* Bảng chi tiết công thức */}
+                  <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+                    <div style={{ padding: '12px 16px', background: '#f8fafc', fontWeight: '700', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', color: '#334155', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      <span>Chỉ tiêu tính toán</span>
+                      <span>Giá trị</span>
+                    </div>
+                    
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#475569', fontSize: '0.9rem' }}>Doanh thu tháng này:</span>
+                      <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{formatVND(monthlyRevenue)}</strong>
+                    </div>
+
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#475569', fontSize: '0.9rem' }}>Doanh thu lũy kế năm:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{formatVND(annualRevenue)}</strong>
+                        <span style={{ 
+                          fontSize: '0.75rem', 
+                          padding: '2px 8px', 
+                          borderRadius: '12px', 
+                          fontWeight: '600',
+                          background: isTaxExempt ? '#dcfce7' : '#fee2e2', 
+                          color: isTaxExempt ? '#15803d' : '#b91c1c' 
+                        }}>
+                          {isTaxExempt ? 'Dưới 1 tỷ (Miễn thuế)' : 'Trên 1 tỷ (Chịu thuế)'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ color: '#475569', fontSize: '0.9rem' }}>Ngành nghề áp dụng:</span>
+                      <span style={{ fontSize: '0.85rem', color: '#334155', fontWeight: '600', maxWidth: '60%', textAlign: 'right' }}>
+                        {getDetailedTaxCalculation(monthlyRevenue).categoryName}
+                      </span>
+                    </div>
+
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#475569', fontSize: '0.9rem' }}>Thuế GTGT phải nộp:</span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Tỷ lệ áp dụng: {(getDetailedTaxCalculation(monthlyRevenue).gtgtRate * 100).toFixed(1)}%</span>
+                      </div>
+                      <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{formatVND(getDetailedTaxCalculation(monthlyRevenue).taxGtgt)}</strong>
+                    </div>
+
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <span style={{ color: '#475569', fontSize: '0.9rem' }}>Thuế TNCN phải nộp:</span>
+                        <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Tỷ lệ áp dụng: {(getDetailedTaxCalculation(monthlyRevenue).tncnRate * 100).toFixed(1)}%</span>
+                      </div>
+                      <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{formatVND(getDetailedTaxCalculation(monthlyRevenue).taxTncn)}</strong>
+                    </div>
+
+                    <div style={{ padding: '14px 16px', background: '#f0fdf4', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #bbf7d0' }}>
+                      <strong style={{ fontSize: '1rem', color: '#15803d' }}>Tổng thuế dự kiến:</strong>
+                      <strong style={{ fontSize: '1.2rem', color: '#166534' }}>
+                        {formatVND(getDetailedTaxCalculation(monthlyRevenue).totalTax)}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Giải thích chi tiết */}
+                  <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '0.85rem', color: '#334155', lineHeight: '1.6' }}>
+                    <h4 style={{ margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '6px', color: '#4f46e5', fontSize: '0.9rem', fontWeight: '700' }}>
+                      <i className="fa-solid fa-circle-info" style={{ color: '#4f46e5' }}></i> Hướng dẫn & Giải thích chi tiết:
+                    </h4>
+                    {isTaxExempt ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        <p style={{ margin: 0 }}>
+                          Do tổng doanh thu lũy kế trong năm của Hộ kinh doanh là <strong style={{ color: '#15803d' }}>{formatVND(annualRevenue)}</strong>, vẫn nằm dưới ngưỡng chịu thuế của pháp luật quy định (<strong>dưới 1 tỷ VNĐ/năm</strong>).
+                        </p>
+                        <p style={{ margin: 0, fontWeight: '500', color: '#15803d' }}>
+                          👉 Hộ kinh doanh của bạn được <strong>miễn hoàn toàn (0 VNĐ)</strong> cả thuế GTGT và thuế TNCN theo Nghị định số 141/2026/NĐ-CP.
+                        </p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <p style={{ margin: 0 }}>
+                          Do tổng doanh thu lũy kế năm nay đạt <strong style={{ color: '#b91c1c' }}>{formatVND(annualRevenue)}</strong>, đã vượt ngưỡng miễn thuế 1 tỷ VNĐ/năm. Vì vậy, các giao dịch phát sinh sẽ bắt đầu áp dụng thuế suất (Nghị định 68/2026/NĐ-CP):
+                        </p>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', paddingLeft: '4px' }}>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                            <span style={{ color: '#10b981', fontWeight: 'bold' }}>•</span>
+                            <span>
+                              <strong>Thuế GTGT</strong> = Doanh thu tháng này ({formatVND(monthlyRevenue)}) x Tỷ lệ GTGT ({(getDetailedTaxCalculation(monthlyRevenue).gtgtRate * 100).toFixed(1)}%) = <strong>{formatVND(getDetailedTaxCalculation(monthlyRevenue).taxGtgt)}</strong>.
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start' }}>
+                            <span style={{ color: '#10b981', fontWeight: 'bold' }}>•</span>
+                            <span>
+                              <strong>Thuế TNCN</strong> = Doanh thu tháng này ({formatVND(monthlyRevenue)}) x Tỷ lệ TNCN ({(getDetailedTaxCalculation(monthlyRevenue).tncnRate * 100).toFixed(1)}%) = <strong>{formatVND(getDetailedTaxCalculation(monthlyRevenue).taxTncn)}</strong>.
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', borderTop: '1px dashed #e2e8f0', paddingTop: '6px', marginTop: '4px' }}>
+                            <span style={{ color: '#4f46e5', fontWeight: 'bold' }}>👉</span>
+                            <span>
+                              <strong>Tổng cộng</strong> = Thuế GTGT + Thuế TNCN = <strong style={{ color: '#166534', fontSize: '0.9rem' }}>{formatVND(getDetailedTaxCalculation(monthlyRevenue).totalTax)}</strong>.
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                </div>
+              </div>
+              <div className="glass-modal-footer" style={{ padding: '15px 20px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
+                <button type="button" className="primary-button btn-purple-grad" onClick={() => setShowTaxDetailModal(false)} style={{ padding: '8px 24px', borderRadius: '8px', minHeight: 'auto', height: '38px' }}>
+                  Đóng
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -1468,14 +1742,24 @@ export default function Home() {
   if (viewMode === 'ledger') {
     const filteredTransactions = transactions.filter((tx: any) => {
       if (!tx.date) return false;
-      if (ledgerFilterType === 'all') return true;
+      
+      // 1. Lọc theo thời gian
+      let matchTime = true;
       if (ledgerFilterType === 'month') {
-        return tx.date.substring(0, 7) === ledgerFilterMonth;
+        matchTime = tx.date.substring(0, 7) === ledgerFilterMonth;
+      } else if (ledgerFilterType === 'day') {
+        matchTime = tx.date === ledgerFilterDay;
       }
-      if (ledgerFilterType === 'day') {
-        return tx.date === ledgerFilterDay;
+      
+      // 2. Lọc theo loại (Thu/Chi)
+      let matchClass = true;
+      if (ledgerFilterClass === 'thu') {
+        matchClass = parseFloat(tx.amount || 0) > 0;
+      } else if (ledgerFilterClass === 'chi') {
+        matchClass = parseFloat(tx.amount || 0) < 0;
       }
-      return true;
+      
+      return matchTime && matchClass;
     });
 
     const totalIncome = filteredTransactions
@@ -1490,7 +1774,7 @@ export default function Home() {
 
     return (
       <div className="layout" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        {renderHeader("Sổ thu chi & Khai báo Giao dịch", "fa-solid fa-book")}
+        {renderHeader("Sổ tay giao dịch Thu / Chi", "fa-solid fa-book")}
         <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', backgroundColor: '#f8fafc' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
@@ -1523,6 +1807,31 @@ export default function Home() {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-10px', marginBottom: '15px' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadTemplate}
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: '1px solid #10b981',
+                    color: '#10b981',
+                    borderRadius: '8px',
+                    padding: '6px 12px',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'rgba(16, 185, 129, 0.08)' }}
+                  onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent' }}
+                >
+                  <i className="fa-solid fa-file-arrow-down"></i> Tải file mẫu Excel/CSV
+                </button>
               </div>
 
               {/* Add/Edit inline form */}
@@ -1729,6 +2038,45 @@ export default function Home() {
                       Theo ngày
                     </button>
                   </div>
+ 
+                <div style={{ display: 'flex', background: '#e2e8f0', padding: '2px', borderRadius: '8px', gap: '2px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setLedgerFilterClass(ledgerFilterClass === 'thu' ? 'all' : 'thu')}
+                    style={{
+                      border: 'none',
+                      padding: '4px 12px',
+                      borderRadius: '6px',
+                      background: ledgerFilterClass === 'thu' ? '#fff' : 'transparent',
+                      color: ledgerFilterClass === 'thu' ? '#10b981' : '#64748b',
+                      fontWeight: ledgerFilterClass === 'thu' ? '600' : '500',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      boxShadow: ledgerFilterClass === 'thu' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Thu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLedgerFilterClass(ledgerFilterClass === 'chi' ? 'all' : 'chi')}
+                    style={{
+                      border: 'none',
+                      padding: '4px 12px',
+                      borderRadius: '6px',
+                      background: ledgerFilterClass === 'chi' ? '#fff' : 'transparent',
+                      color: ledgerFilterClass === 'chi' ? '#ef4444' : '#64748b',
+                      fontWeight: ledgerFilterClass === 'chi' ? '600' : '500',
+                      fontSize: '0.8rem',
+                      cursor: 'pointer',
+                      boxShadow: ledgerFilterClass === 'chi' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    CHI
+                  </button>
+                </div>
 
                   {ledgerFilterType === 'month' && (
                     <input

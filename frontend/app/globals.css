@@ -429,25 +429,16 @@ body {
 
 .formatted-content ul {
     margin-bottom: 0.75rem;
-    list-style-type: none;
-    padding-left: 0;
+    padding-left: 1.5rem;
+    list-style-type: disc;
 }
 
 .formatted-content ul li {
-    position: relative;
     margin-bottom: 0.4rem;
-    padding-left: 1.5rem;
 }
 
-.formatted-content ul li::before {
-    content: "";
-    position: absolute;
-    left: 6px;
-    top: 10px;
-    width: 6px;
-    height: 6px;
-    background-color: var(--primary);
-    border-radius: 50%;
+.formatted-content ul li::marker {
+    color: var(--primary);
 }
 
 .formatted-content ol {
@@ -457,7 +448,11 @@ body {
 
 .formatted-content ol li {
     margin-bottom: 0.4rem;
-    padding-left: 0.25rem;
+}
+
+.formatted-content ol li::marker {
+    color: var(--primary);
+    font-weight: 600;
 }
 
 .formatted-content strong {
@@ -552,8 +547,8 @@ body {
     border-left-color: rgba(255, 255, 255, 0.4);
 }
 
-.user-message .formatted-content ul li::before {
-    background-color: white;
+.user-message .formatted-content ul li::marker {
+    color: white;
 }
 
 .user-message .formatted-content strong {

@@ -5,6 +5,16 @@ from google import genai
 from google.genai import types
 import time
 from services.encryption_service import EncryptionService
+from pydantic import BaseModel, Field
+from typing import List
+
+class ExtractedTransaction(BaseModel):
+    date: str = Field(description="Ngày phát sinh giao dịch định dạng YYYY-MM-DD. Nếu không thấy trong hóa đơn/biên lai, hãy lấy ngày hôm nay.")
+    amount: float = Field(description="Số tiền giao dịch. Số DƯƠNG nếu là Khoản Thu/Doanh thu (bán hàng, khách trả tiền...). Số ÂM nếu là Khoản Chi/Chi phí (mua hàng, trả tiền điện nước, trả lương...).")
+    description: str = Field(description="Mô tả chi tiết và ngắn gọn về giao dịch (ví dụ: 'Bán lẻ hàng tạp hóa', 'Mua nguyên vật liệu bánh mì').")
+
+class ExtractionResult(BaseModel):
+    transactions: List[ExtractedTransaction]
 
 class GeminiService:
     def __init__(self):
@@ -57,8 +67,18 @@ class GeminiService:
                             # Decrypt in-memory
                             decrypted_data = self.encryption_service.decrypt_file(file_path)
                             df = pd.read_csv(io.BytesIO(decrypted_data)) if ext == '.csv' else pd.read_excel(io.BytesIO(decrypted_data))
+                            
+                            # Giới hạn đọc tối đa 500 dòng đầu tiên
+                            row_limit = 500
+                            was_truncated = False
+                            if len(df) > row_limit:
+                                df = df.head(row_limit)
+                                was_truncated = True
+                                
                             csv_data = df.to_csv(index=False)
                             full_prompt += f"\n\n--- DỮ LIỆU TỪ FILE {ext.upper()} ---\n{csv_data}\n--- HẾT DỮ LIỆU FILE ---"
+                            if was_truncated:
+                                full_prompt += f"\n\n[LƯU Ý QUAN TRỌNG CHO AI: Dữ liệu từ file đã bị cắt bớt và chỉ hiển thị {row_limit} dòng đầu tiên do vượt quá giới hạn hệ thống. Hãy thông báo điều này ngắn gọn cho người dùng biết ở cuối câu trả lời.]"
                         except Exception as e:
                             print(f"Lỗi đọc file Excel/CSV đã giải mã: {e}")
                     else:
@@ -114,5 +134,67 @@ class GeminiService:
                     time.sleep((attempt + 1) * 2)
                     continue
                 print(f"Lỗi khi nhúng văn bản (Gemini API): {str(e)}")
+                return None
+        return None
+
+    def extract_transactions_from_file(self, file_path):
+        """
+        Sử dụng Gemini 2.5 Flash để đọc hóa đơn/biên lai (ảnh, PDF) và trích xuất danh sách giao dịch dưới dạng JSON.
+        """
+        if not self.client:
+            return None
+
+        prompt = """
+        Bạn là trợ lý kế toán chuyên nghiệp tại Việt Nam. Hãy đọc kỹ tệp tin đính kèm (ảnh chụp hóa đơn, biên lai chuyển khoản, tệp PDF).
+        Hãy trích xuất TẤT CẢ các giao dịch phát sinh từ tệp tin này và phân loại Thu/Chi tương ứng bằng số tiền Dương/Âm theo đúng định dạng được yêu cầu.
+        """
+
+        for attempt in range(3):
+            try:
+                contents = []
+                temp_path = file_path + ".decrypted"
+                
+                # Giải mã file lưu tạm để đưa lên Gemini Files API
+                decrypted_data = self.encryption_service.decrypt_file(file_path)
+                with open(temp_path, "wb") as temp_file:
+                    temp_file.write(decrypted_data)
+                
+                try:
+                    uploaded_file = self.client.files.upload(file=temp_path)
+                    contents.append(uploaded_file)
+                except Exception as upload_err:
+                    print(f"Lỗi tải file giải mã lên Gemini: {upload_err}")
+                    return None
+                finally:
+                    # Đảm bảo xóa file tạm đã giải mã ngay sau khi upload
+                    if os.path.exists(temp_path):
+                        try:
+                            os.remove(temp_path)
+                        except Exception as clean_err:
+                            print(f"Không thể xóa file tạm đã giải mã: {clean_err}")
+                
+                contents.append(prompt)
+                
+                # Gọi Gemini API với Response Schema để định hình JSON đầu ra chuẩn xác
+                response = self.client.models.generate_content(
+                    model=self.model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        response_schema=ExtractionResult,
+                    )
+                )
+                
+                import json
+                return json.loads(response.text)
+            except Exception as e:
+                error_msg = str(e)
+                if "429" in error_msg or "RESOURCE_EXHAUSTED" in error_msg:
+                    print("Lỗi Gemini API: Hết quota.")
+                    return None
+                if "503" in error_msg or "overloaded" in error_msg.lower():
+                    time.sleep((attempt + 1) * 2)
+                    continue
+                print(f"Lỗi trích xuất thông tin giao dịch bằng Gemini: {error_msg}")
                 return None
         return None

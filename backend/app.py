@@ -1,5 +1,7 @@
 import os
 import time
+import io
+import pandas as pd
 from collections import defaultdict
 from functools import wraps
 from dotenv import load_dotenv
@@ -79,6 +81,14 @@ def chat():
     
     file = request.files.get('file')
     
+    if file:
+        file.seek(0, os.SEEK_END)
+        file_size = file.tell()
+        file.seek(0)  # reset file pointer
+        max_size = 5 * 1024 * 1024  # 5MB
+        if file_size > max_size:
+            return jsonify({"error": "Kích thước tệp tin không được vượt quá 5MB."}), 400
+            
     if not user_message and not file:
         return jsonify({"error": "Message is required"}), 400
         
@@ -464,6 +474,160 @@ def delete_transaction(transaction_id):
         return jsonify({"message": "Transaction deleted successfully"})
     else:
         return jsonify({"error": "Failed to delete transaction"}), 500
+
+@app.route('/api/transactions/template', methods=['GET'])
+@limit_requests(100, 60)
+def download_transaction_template():
+    try:
+        # Tạo dữ liệu mẫu cho template
+        data = {
+            "Ngay (YYYY-MM-DD)": ["2026-06-01", "2026-06-01"],
+            "Loai (Thu/Chi)": ["Thu", "Chi"],
+            "SoTien": [500000, 150000],
+            "DienGiai": ["Doanh thu ban le tap hoa", "Mua tui dung va bao bi"]
+        }
+        df = pd.DataFrame(data)
+        
+        # Ghi vào BytesIO dưới dạng file xlsx
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+        output.seek(0)
+        
+        from flask import send_file
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="mau_so_tay_giao_dich.xlsx"
+        )
+    except Exception as e:
+        print(f"Lỗi khi tạo file mẫu xlsx: {e}")
+        return jsonify({"error": f"Lỗi hệ thống khi tạo tệp tin mẫu: {str(e)}"}), 500
+
+@app.route('/api/transactions/ocr', methods=['POST'])
+@limit_requests(15, 60)
+def upload_ocr_transaction():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.form.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    file = request.files.get('file')
+    if not file:
+        return jsonify({"error": "Không tìm thấy tệp tin được tải lên."}), 400
+        
+    # 1. Kiểm tra kích thước tệp tin (tối đa 5MB)
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+    max_size = 5 * 1024 * 1024  # 5MB
+    if file_size > max_size:
+        return jsonify({"error": "Kích thước tệp tin không được vượt quá 5MB."}), 400
+        
+    # Lưu tệp tin tạm thời
+    file_name = file.filename
+    ext = os.path.splitext(file_name)[1].lower()
+    temp_filename = f"ocr_{int(time.time())}_{file_name}"
+    os.makedirs("uploads", exist_ok=True)
+    file_path = os.path.join("uploads", temp_filename)
+    
+    file.save(file_path)
+    encryption_service.encrypt_file(file_path)
+    
+    saved_transactions = []
+    
+    try:
+        # Xử lý tệp Excel/CSV mẫu trực tiếp (Zero API Cost)
+        if ext in ['.csv', '.xlsx', '.xls']:
+            # Giải mã trước khi đọc
+            decrypted_data = encryption_service.decrypt_file(file_path)
+            
+            if ext == '.csv':
+                df = pd.read_csv(io.BytesIO(decrypted_data))
+            else:
+                df = pd.read_excel(io.BytesIO(decrypted_data))
+                
+            # Chuẩn hóa tên cột để kiểm tra
+            expected_cols = ['ngay(yyyy-mm-dd)', 'loai(thu/chi)', 'sotien', 'diengiai']
+            actual_cols = [str(c).strip().lower().replace(" ", "") for c in df.columns]
+            
+            if not all(col in actual_cols for col in expected_cols):
+                return jsonify({
+                    "error": "Cấu trúc file không đúng mẫu. File Excel/CSV phải chứa chính xác các cột: Ngay (YYYY-MM-DD), Loai (Thu/Chi), SoTien, DienGiai."
+                }), 400
+                
+            col_map = {actual_cols[i]: df.columns[i] for i in range(len(actual_cols))}
+            
+            for index, row in df.head(500).iterrows():
+                date_val = str(row[col_map['ngay(yyyy-mm-dd)']]).strip()
+                type_val = str(row[col_map['loai(thu/chi)']]).strip().lower()
+                amount_val = row[col_map['sotien']]
+                desc_val = str(row[col_map['diengiai']]).strip()
+                
+                # Bỏ qua các hàng trống
+                if date_val == 'nan' or not date_val:
+                    continue
+                    
+                try:
+                    amount = float(amount_val)
+                except ValueError:
+                    continue
+                    
+                if 'chi' in type_val:
+                    amount = -abs(amount)
+                else:
+                    amount = abs(amount)
+                    
+                new_tx = supabase_service.add_transaction(user_token, date_val, amount, desc_val)
+                if new_tx:
+                    saved_transactions.append(new_tx)
+                    
+            return jsonify({
+                "message": f"Nhập thành công {len(saved_transactions)} giao dịch từ tệp Excel/CSV mẫu!",
+                "transactions": saved_transactions
+            })
+            
+        elif ext in ['.pdf', '.png', '.jpg', '.jpeg', '.webp']:
+            # Gọi Gemini trích xuất hóa đơn bằng AI
+            extracted_data = gemini_service.extract_transactions_from_file(file_path)
+            
+            if not extracted_data or 'transactions' not in extracted_data:
+                return jsonify({"error": "Không thể trích xuất giao dịch từ hóa đơn này bằng AI."}), 500
+                
+            for tx_data in extracted_data['transactions']:
+                date_val = tx_data.get('date')
+                amount_val = tx_data.get('amount', 0)
+                desc_val = tx_data.get('description', '')
+                
+                new_tx = supabase_service.add_transaction(user_token, date_val, amount_val, desc_val)
+                if new_tx:
+                    saved_transactions.append(new_tx)
+                    
+            return jsonify({
+                "message": f"AI trích xuất thành công {len(saved_transactions)} giao dịch từ hóa đơn!",
+                "transactions": saved_transactions
+            })
+            
+        else:
+            return jsonify({"error": "Định dạng tệp không được hỗ trợ. Vui lòng tải lên Excel, CSV, PDF hoặc hình ảnh hóa đơn."}), 400
+            
+    except Exception as e:
+        print(f"Lỗi xử lý file upload giao dịch: {e}")
+        return jsonify({"error": f"Lỗi hệ thống khi xử lý tệp tin: {str(e)}"}), 500
+        
+    finally:
+        # Xóa file đã tải lên ngay lập tức để tiết kiệm ổ đĩa và bảo vệ riêng tư
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except Exception as clean_err:
+                print(f"Không thể xóa file tạm sau xử lý: {clean_err}")
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
