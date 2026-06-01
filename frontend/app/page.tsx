@@ -234,7 +234,7 @@ export default function Home() {
         periodLabel: `Quý ${targetQ}/${targetYear}`,
         dueDate: dueDate.toISOString().split('T')[0],
         days: diffDays,
-        message: diffDays < 0 
+        message: diffDays < 0
           ? `Đã quá hạn nộp thuế Quý ${targetQ}/${targetYear}! Quá hạn ${Math.abs(diffDays)} ngày.`
           : `Sắp đến thời hạn nộp thuế! Hạn chót nộp thuế Quý ${targetQ}/${targetYear} còn ${diffDays} ngày nữa.`
       };
@@ -1130,7 +1130,7 @@ export default function Home() {
     }
 
     setIsOcrLoading(true);
-    
+
     const formData = new FormData();
     formData.append("file", file);
     formData.append("supabase_token", userToken);
@@ -1412,7 +1412,7 @@ export default function Home() {
         cho_thue_tai_san_dai_ly: { gtgt: 0.05, tncn: 0.05, name: "Cho thuê tài sản, đại lý bảo hiểm, xổ số" },
         dich_vu_noi_dung_so: { gtgt: 0.05, tncn: 0.05, name: "Dịch vụ nội dung thông tin số, quảng cáo số" }
       };
-      
+
       const rate = detailsMap[businessCategory] || { gtgt: 0.02, tncn: 0.01, name: "Hoạt động kinh doanh khác" };
       const taxGtgt = revenue * rate.gtgt;
       const taxTncn = revenue * rate.tncn;
@@ -1467,7 +1467,7 @@ export default function Home() {
               <span className="stat-card-label">Doanh thu tháng này</span>
               <strong className="stat-card-value value-green">{formatVND(monthlyRevenue)}</strong>
               <span className="stat-card-sub">
-                <i className="fa-solid fa-arrows-rotate"></i> Đồng bộ từ Sổ tay giao dịch
+                <i className="fa-solid fa-arrows-rotate"></i> Đồng bộ từ Sổ giao dịch
               </span>
             </div>
 
@@ -1504,14 +1504,14 @@ export default function Home() {
             </h3>
             <div className="quick-actions-btns">
               <button className="action-btn-pill btn-purple-grad" onClick={() => setViewMode('chat')}>
-                <i className="fa-regular fa-comments"></i> Hỏi AI về Thuế
+                <i className="fa-regular fa-comments"></i> Chat với AI
               </button>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-8px', marginLeft: '20px', marginBottom: '8px' }}>
                 Giao diện chat + tính thuế nhanh
               </div>
 
               <button className="action-btn-pill btn-green-grad" onClick={() => { setViewMode('ledger'); handleCancelEditTransaction(); }}>
-                <i className="fa-solid fa-book"></i> Sổ tay giao dịch Thu / Chi
+                <i className="fa-solid fa-book"></i> Sổ giao dịch Thu / Chi
               </button>
               <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '-8px', marginLeft: '20px', marginBottom: '8px' }}>
                 Quản lý doanh thu hằng ngày
@@ -1620,14 +1620,14 @@ export default function Home() {
               </div>
               <div className="glass-modal-body" style={{ color: '#1e293b', padding: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  
+
                   {/* Bảng chi tiết công thức */}
                   <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
                     <div style={{ padding: '12px 16px', background: '#f8fafc', fontWeight: '700', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', color: '#334155', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                       <span>Chỉ tiêu tính toán</span>
                       <span>Giá trị</span>
                     </div>
-                    
+
                     <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: '#475569', fontSize: '0.9rem' }}>Doanh thu tháng này:</span>
                       <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{formatVND(monthlyRevenue)}</strong>
@@ -1637,13 +1637,13 @@ export default function Home() {
                       <span style={{ color: '#475569', fontSize: '0.9rem' }}>Doanh thu lũy kế năm:</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <strong style={{ color: '#0f172a', fontSize: '0.95rem' }}>{formatVND(annualRevenue)}</strong>
-                        <span style={{ 
-                          fontSize: '0.75rem', 
-                          padding: '2px 8px', 
-                          borderRadius: '12px', 
+                        <span style={{
+                          fontSize: '0.75rem',
+                          padding: '2px 8px',
+                          borderRadius: '12px',
                           fontWeight: '600',
-                          background: isTaxExempt ? '#dcfce7' : '#fee2e2', 
-                          color: isTaxExempt ? '#15803d' : '#b91c1c' 
+                          background: isTaxExempt ? '#dcfce7' : '#fee2e2',
+                          color: isTaxExempt ? '#15803d' : '#b91c1c'
                         }}>
                           {isTaxExempt ? 'Dưới 1 tỷ (Miễn thuế)' : 'Trên 1 tỷ (Chịu thuế)'}
                         </span>
@@ -1723,7 +1723,7 @@ export default function Home() {
                       </div>
                     )}
                   </div>
-                  
+
                 </div>
               </div>
               <div className="glass-modal-footer" style={{ padding: '15px 20px', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
@@ -1742,7 +1742,7 @@ export default function Home() {
   if (viewMode === 'ledger') {
     const filteredTransactions = transactions.filter((tx: any) => {
       if (!tx.date) return false;
-      
+
       // 1. Lọc theo thời gian
       let matchTime = true;
       if (ledgerFilterType === 'month') {
@@ -1750,7 +1750,7 @@ export default function Home() {
       } else if (ledgerFilterType === 'day') {
         matchTime = tx.date === ledgerFilterDay;
       }
-      
+
       // 2. Lọc theo loại (Thu/Chi)
       let matchClass = true;
       if (ledgerFilterClass === 'thu') {
@@ -1758,7 +1758,7 @@ export default function Home() {
       } else if (ledgerFilterClass === 'chi') {
         matchClass = parseFloat(tx.amount || 0) < 0;
       }
-      
+
       return matchTime && matchClass;
     });
 
@@ -1774,7 +1774,7 @@ export default function Home() {
 
     return (
       <div className="layout" style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', overflow: 'hidden' }}>
-        {renderHeader("Sổ tay giao dịch Thu / Chi", "fa-solid fa-book")}
+        {renderHeader("Sổ giao dịch Thu / Chi", "fa-solid fa-book")}
         <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', backgroundColor: '#f8fafc' }}>
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
@@ -2038,45 +2038,45 @@ export default function Home() {
                       Theo ngày
                     </button>
                   </div>
- 
-                <div style={{ display: 'flex', background: '#e2e8f0', padding: '2px', borderRadius: '8px', gap: '2px' }}>
-                  <button
-                    type="button"
-                    onClick={() => setLedgerFilterClass(ledgerFilterClass === 'thu' ? 'all' : 'thu')}
-                    style={{
-                      border: 'none',
-                      padding: '4px 12px',
-                      borderRadius: '6px',
-                      background: ledgerFilterClass === 'thu' ? '#fff' : 'transparent',
-                      color: ledgerFilterClass === 'thu' ? '#10b981' : '#64748b',
-                      fontWeight: ledgerFilterClass === 'thu' ? '600' : '500',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      boxShadow: ledgerFilterClass === 'thu' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    Thu
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setLedgerFilterClass(ledgerFilterClass === 'chi' ? 'all' : 'chi')}
-                    style={{
-                      border: 'none',
-                      padding: '4px 12px',
-                      borderRadius: '6px',
-                      background: ledgerFilterClass === 'chi' ? '#fff' : 'transparent',
-                      color: ledgerFilterClass === 'chi' ? '#ef4444' : '#64748b',
-                      fontWeight: ledgerFilterClass === 'chi' ? '600' : '500',
-                      fontSize: '0.8rem',
-                      cursor: 'pointer',
-                      boxShadow: ledgerFilterClass === 'chi' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    CHI
-                  </button>
-                </div>
+
+                  <div style={{ display: 'flex', background: '#e2e8f0', padding: '2px', borderRadius: '8px', gap: '2px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerFilterClass(ledgerFilterClass === 'thu' ? 'all' : 'thu')}
+                      style={{
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        background: ledgerFilterClass === 'thu' ? '#fff' : 'transparent',
+                        color: ledgerFilterClass === 'thu' ? '#10b981' : '#64748b',
+                        fontWeight: ledgerFilterClass === 'thu' ? '600' : '500',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        boxShadow: ledgerFilterClass === 'thu' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      THU
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setLedgerFilterClass(ledgerFilterClass === 'chi' ? 'all' : 'chi')}
+                      style={{
+                        border: 'none',
+                        padding: '4px 12px',
+                        borderRadius: '6px',
+                        background: ledgerFilterClass === 'chi' ? '#fff' : 'transparent',
+                        color: ledgerFilterClass === 'chi' ? '#ef4444' : '#64748b',
+                        fontWeight: ledgerFilterClass === 'chi' ? '600' : '500',
+                        fontSize: '0.8rem',
+                        cursor: 'pointer',
+                        boxShadow: ledgerFilterClass === 'chi' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      CHI
+                    </button>
+                  </div>
 
                   {ledgerFilterType === 'month' && (
                     <input
