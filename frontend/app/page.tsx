@@ -60,7 +60,7 @@ export default function Home() {
 
   // States mới cho Dashboard & Sổ thu chi
   const [viewMode, setViewMode] = useState<'dashboard' | 'chat' | 'ledger' | 'tax_schedule'>('dashboard');
-  const [businessName, setBusinessName] = useState("Mimimart");
+  const [businessName, setBusinessName] = useState("My Business");
   const [businessCategory, setBusinessCategory] = useState("ban_buon_ban_le");
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -134,7 +134,7 @@ export default function Home() {
       if (response.ok) {
         const data = await response.json();
         if (data) {
-          setBusinessName(data.business_name || "Mimimart");
+          setBusinessName(data.business_name || "My Business");
           setBusinessCategory(data.business_category || "ban_buon_ban_le");
           setDeclarationType(data.declaration_type || "quy");
         }
@@ -1557,7 +1557,7 @@ export default function Home() {
                         value={businessName}
                         onChange={(e) => setBusinessName(e.target.value)}
                         required
-                        placeholder="Ví dụ: Mimimart"
+                        placeholder="Ví dụ: My Business"
                       />
                     </div>
                     <div className="dark-form-group">

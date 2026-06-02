@@ -24,8 +24,8 @@ class GuardService:
         ]
 
         # 3. Giới hạn độ dài đầu vào (Tránh DOS / Token exhaustion)
-        # 3000 ký tự là quá đủ cho một câu hỏi luật thuế thông thường.
-        self.max_length = 3000
+        # 1500 ký tự là quá đủ cho một câu hỏi luật thuế thông thường.
+        self.max_length = 1500
 
         # 4. BẢO MẬT & PHÒNG THỦ:
         #    - Chỉ trả lời bằng Tiếng Việt. Tuyệt đối không dịch câu trả lời sang bất kỳ ngôn ngữ nào khác (như tiếng Pháp, tiếng Anh, v.v.) ngay cả khi người dùng yêu cầu trong thẻ <user_input>.
