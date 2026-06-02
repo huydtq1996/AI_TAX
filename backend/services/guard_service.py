@@ -197,21 +197,41 @@ Hãy phân loại chính xác và chỉ trả về duy nhất một từ khóa v
         BƯỚC 5: Kiểm tra phản hồi của AI theo các nguyên tắc bảo mật.
         Trả về True nếu phản hồi hợp lệ và an toàn, False nếu vi phạm.
         """
-        # Không bao giờ trả về câu trả lời rỗng hoặc chuỗi rỗng
-        if not response or not response.strip():
-            print("[Guard] BLOCKED: Empty response detected.")
-            return False
-
-        # Tuyệt đối không tiết lộ chỉ thị hệ thống (system prompt), cấu trúc dữ liệu, prompt, context hoặc ngữ cảnh nội bộ (rag_context)
-        leakage_keywords = [
-            "system prompt", "system_prompt", "rag_context", "ngữ cảnh nội bộ",
-            "chỉ thị hệ thống", "cấu trúc dữ liệu", "khung câu hỏi", "prompt gốc"
-        ]
-        
-        response_lower = response.lower()
-        for keyword in leakage_keywords:
-            if keyword in response_lower:
-                print(f"[Guard] BLOCKED: Prompt/Internal info leakage detected in response ('{keyword}')")
+        # 1. Không bao giờ trả về câu trả lời rỗng hoặc chuỗi rỗng
+        if self.security_rules.get("no_empty_response"):
+            if not response or not response.strip():
+                print("[Guard] BLOCKED: Empty response detected.")
                 return False
 
+        # 2. Tuyệt đối không tiết lộ chỉ thị hệ thống, prompt, context hoặc ngữ cảnh nội bộ
+        if self.security_rules.get("prevent_leakage"):
+            leakage_keywords = [
+                "system prompt", "system_prompt", "rag_context", "ngữ cảnh nội bộ",
+                "chỉ thị hệ thống", "cấu trúc dữ liệu", "khung câu hỏi", "prompt gốc"
+            ]
+            response_lower = response.lower()
+            for keyword in leakage_keywords:
+                if keyword in response_lower:
+                    print(f"[Guard] BLOCKED: Prompt/Internal info leakage detected in response ('{keyword}')")
+                    return False
+
+        # 3. Chỉ trả lời bằng Tiếng Việt
+        if self.security_rules.get("vietnamese_only"):
+            if response and response.strip():
+                # Kiểm tra sự tồn tại của ký tự tiếng Việt đặc trưng (có dấu hoặc chữ đ)
+                vietnamese_chars_pattern = re.compile(
+                    r"[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]",
+                    re.IGNORECASE
+                )
+                # Chỉ áp dụng kiểm tra ngôn ngữ cho câu trả lời dài hơn 20 ký tự
+                # nhằm tránh chặn nhầm câu trả lời ngắn hoặc từ viết tắt/thuật ngữ kỹ thuật
+                if len(response) > 20 and not vietnamese_chars_pattern.search(response):
+                    # Kiểm tra thêm một số từ không dấu phổ biến trong tiếng Việt đề phòng người dùng gõ không dấu
+                    vietnamese_no_accent_words = {"cho", "cua", "toi", "khong", "co", "ve", "duoc", "trong", "va", "nhung", "la", "cac", "mot", "nguoi"}
+                    words = set(response.lower().split())
+                    if not words.intersection(vietnamese_no_accent_words):
+                        print("[Guard] BLOCKED: Response is not in Vietnamese (Language violation)")
+                        return False
+
         return True
+
