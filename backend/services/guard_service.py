@@ -86,54 +86,24 @@ class GuardService:
                 
         return True
 
-    def check_relevance(self, prompt: str, gemini_service) -> str:
+    def check_relevance(self, prompt: str, gemini_service=None) -> str:
         """
         BƯỚC 3: Phân loại câu hỏi của người dùng (AI Check 0).
-        Xác định mức độ liên quan đến Thuế, Kế toán, Doanh nghiệp.
-        Sử dụng mô hình Gemini để phân loại ngữ nghĩa chính xác.
-        Trả về: "RELEVANT", "GREETING", hoặc "UNRELATED".
+        Đã chuyển từ dùng LLM sang Keyword-based để tiết kiệm API Quota (ngăn lỗi 429).
+        Trả về: "RELEVANT" hoặc "GREETING".
+        (Việc chặn "UNRELATED" sẽ do System Prompt của AI chính đảm nhiệm)
         """
-        if not gemini_service or not prompt:
+        if not prompt:
             return "RELEVANT"
 
-        safe_prompt = self.sanitize_input(prompt)
+        clean_prompt = prompt.strip().lower()
 
-        system_instruction = """
-Bạn là bộ phân loại câu hỏi (classifier) cho trợ lý ảo tư vấn thuế tại Việt Nam.
-Nhiệm vụ của bạn là phân loại câu hỏi của người dùng nằm trong thẻ <user_input> vào một trong ba nhóm sau:
+        # Kiểm tra các câu chào hỏi/cảm ơn ngắn gọn (tránh gọi API cho các câu vô nghĩa)
+        greetings = ["chào", "hello", "hi ", "cảm ơn", "thanks", "tạm biệt", "bye", "chúc", "ok", "dạ", "vâng"]
+        if len(clean_prompt) < 30 and any(g in clean_prompt for g in greetings):
+            return "GREETING"
 
-1. "GREETING": Nếu câu hỏi là lời chào xã giao, cảm ơn, giới thiệu bản thân hoặc chào hỏi đơn giản (Ví dụ: "chào bạn", "hello", "cảm ơn bạn", "bạn là ai", "chúc một ngày tốt lành").
-2. "RELEVANT": Nếu câu hỏi liên quan đến luật, nghị định, thông tư về thuế, kế toán, hóa đơn, doanh nghiệp, doanh thu, chi phí, hoặc các nghĩa vụ tài chính liên quan.
-3. "UNRELATED": Nếu câu hỏi hoàn toàn không liên quan đến thuế, kế toán, doanh nghiệp hay luật pháp liên quan (Ví dụ: "thời tiết hôm nay thế nào", "cách làm bánh chưng", "viết code python", "dịch bài thơ", "tại sao bầu trời màu xanh").
-
-Hãy phân loại chính xác và chỉ trả về duy nhất một từ khóa viết hoa: "GREETING", "RELEVANT" hoặc "UNRELATED". Tuyệt đối không trả về bất kỳ từ nào khác ngoài 3 từ khóa trên.
-"""
-
-        for attempt in range(3):
-            try:
-                response = gemini_service.client.models.generate_content(
-                    model=gemini_service.model_name,
-                    contents=f"<user_input>\n{safe_prompt}\n</user_input>",
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_instruction,
-                        temperature=0.0,
-                        max_output_tokens=200
-                    )
-                )
-                result = response.text.strip().upper() if response.text else "RELEVANT"
-                # Làm sạch kết quả nếu model trả về các ký tự dư thừa
-                if "GREETING" in result:
-                    return "GREETING"
-                if "UNRELATED" in result:
-                    return "UNRELATED"
-                return "RELEVANT"
-            except Exception as e:
-                error_msg = str(e)
-                if "503" in error_msg or "overloaded" in error_msg.lower():
-                    time.sleep((attempt + 1) * 2)
-                    continue
-                print(f"Lỗi phân loại câu hỏi bằng Gemini: {error_msg}")
-                return "RELEVANT"
+        # Mặc định cho phép đi tiếp, AI chính sẽ tự từ chối nếu không liên quan đến thuế
         return "RELEVANT"
 
     def needs_rag(self, user_input: str) -> bool:
@@ -147,8 +117,8 @@ Hãy phân loại chính xác và chỉ trả về duy nhất một từ khóa v
             
         clean_input = user_input.strip().lower()
         
-        # 1. Bỏ qua RAG nếu câu hỏi quá ngắn (dưới 10 ký tự)
-        if len(clean_input) < 10:
+        # 1. Bỏ qua RAG nếu câu quá ngắn và vô nghĩa (dưới 4 ký tự)
+        if len(clean_input) < 4:
             return False
             
         # 2. HỆ THỐNG TÍNH ĐIỂM (Scoring System)
