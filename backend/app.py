@@ -33,12 +33,14 @@ def limit_requests(max_requests=20, window_seconds=60):
         @wraps(f)
         def wrapped(*args, **kwargs):
             ip = get_client_ip()
+            # Sử dụng key kết hợp IP và tên hàm để giới hạn riêng biệt cho từng API
+            rate_limit_key = f"{ip}:{f.__name__}"
             now = time.time()
             
             # Loại bỏ các mốc thời gian cũ nằm ngoài khoảng thời gian giới hạn (window)
-            timestamps = rate_limit_records[ip]
+            timestamps = rate_limit_records[rate_limit_key]
             timestamps = [t for t in timestamps if now - t < window_seconds]
-            rate_limit_records[ip] = timestamps
+            rate_limit_records[rate_limit_key] = timestamps
             
             if len(timestamps) >= max_requests:
                 wait_time = int(window_seconds - (now - timestamps[0]))
@@ -48,7 +50,7 @@ def limit_requests(max_requests=20, window_seconds=60):
                     "error": f"Too many requests. Vui lòng thử lại sau {wait_time} giây."
                 }), 429
                 
-            rate_limit_records[ip].append(now)
+            rate_limit_records[rate_limit_key].append(now)
             return f(*args, **kwargs)
         return wrapped
     return decorator
@@ -168,9 +170,10 @@ def chat():
     # 4. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
     ai_response = gemini_service.generate_response(user_message, context=legal_context, file_path=file_path)
     
-    # Nếu lỗi API thì ẩn nguồn tham chiếu
+    # Nếu lỗi API hoặc từ chối trả lời thì ẩn nguồn tham chiếu
     is_error = ai_response.startswith("Lỗi") or "Hết quota" in ai_response
-    if is_error:
+    is_refusal = "Đây là chatbot về thuế!" in ai_response
+    if is_error or is_refusal:
         sources = []
     else:
         # 4.1 Guard Service - Kiểm tra phản hồi (Bảo mật & Phòng thủ)
@@ -508,7 +511,7 @@ def download_transaction_template():
     try:
         # Tạo dữ liệu mẫu cho template
         data = {
-            "Ngay (YYYY-MM-DD)": ["2026-06-01", "2026-06-01"],
+            "Ngay (DD/MM/YYYY)": ["01/06/2026", "01/06/2026"],
             "Loai (Thu/Chi)": ["Thu", "Chi"],
             "SoTien": [57600000, 12850000],
             "DienGiai": ["Doanh thu ban le tap hoa", "Mua tui dung va bao bi"]
@@ -581,25 +584,47 @@ def upload_ocr_transaction():
                 df = pd.read_excel(io.BytesIO(decrypted_data))
                 
             # Chuẩn hóa tên cột để kiểm tra
-            expected_cols = ['ngay(yyyy-mm-dd)', 'loai(thu/chi)', 'sotien', 'diengiai']
+            expected_cols = ['ngay(dd/mm/yyyy)', 'loai(thu/chi)', 'sotien', 'diengiai']
             actual_cols = [str(c).strip().lower().replace(" ", "") for c in df.columns]
             
             if not all(col in actual_cols for col in expected_cols):
                 return jsonify({
-                    "error": "Cấu trúc file không đúng mẫu. File Excel/CSV phải chứa chính xác các cột: Ngay (YYYY-MM-DD), Loai (Thu/Chi), SoTien, DienGiai."
+                    "error": "Cấu trúc file không đúng mẫu. File Excel/CSV phải chứa chính xác các cột: Ngay (DD/MM/YYYY), Loai (Thu/Chi), SoTien, DienGiai."
                 }), 400
                 
             col_map = {actual_cols[i]: df.columns[i] for i in range(len(actual_cols))}
             
             for index, row in df.head(500).iterrows():
-                date_val = str(row[col_map['ngay(yyyy-mm-dd)']]).strip()
+                raw_date = str(row[col_map['ngay(dd/mm/yyyy)']]).strip()
                 type_val = str(row[col_map['loai(thu/chi)']]).strip().lower()
                 amount_val = row[col_map['sotien']]
                 desc_val = str(row[col_map['diengiai']]).strip()
                 
                 # Bỏ qua các hàng trống
-                if date_val == 'nan' or not date_val:
+                if raw_date == 'nan' or not raw_date:
                     continue
+                    
+                # Chuyển đổi định dạng ngày từ DD/MM/YYYY sang YYYY-MM-DD
+                date_val = raw_date
+                try:
+                    if ' ' in raw_date:
+                        date_part = raw_date.split(' ')[0]
+                    else:
+                        date_part = raw_date
+                        
+                    if '/' in date_part:
+                        parts = date_part.split('/')
+                        if len(parts) == 3:
+                            date_val = f"{int(parts[2]):04d}-{int(parts[1]):02d}-{int(parts[0]):02d}"
+                    elif '-' in date_part:
+                        parts = date_part.split('-')
+                        if len(parts) == 3:
+                            if len(parts[0]) == 4:
+                                date_val = f"{int(parts[0]):04d}-{int(parts[1]):02d}-{int(parts[2]):02d}"
+                            else:
+                                date_val = f"{int(parts[2]):04d}-{int(parts[1]):02d}-{int(parts[0]):02d}"
+                except Exception:
+                    pass
                     
                 try:
                     amount = float(amount_val)

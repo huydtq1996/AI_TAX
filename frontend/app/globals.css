@@ -164,6 +164,7 @@ body {
         opacity: 0;
         transform: translateY(6px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -873,7 +874,8 @@ body {
 .dashboard-layout {
     min-height: 100vh;
     width: 100vw;
-    background: var(--bg-color); /* #f1f5f9 light background */
+    background: var(--bg-color);
+    /* #f1f5f9 light background */
     color: var(--text-main);
     display: flex;
     flex-direction: column;
@@ -948,10 +950,13 @@ body {
     justify-content: space-between;
     gap: 1rem;
     padding: 1.25rem 1.5rem;
-    background: #fffbeb; /* light amber background */
-    border: 1px solid #fde68a; /* light amber border */
+    background: #fffbeb;
+    /* light amber background */
+    border: 1px solid #fde68a;
+    /* light amber border */
     border-radius: 1.25rem;
-    color: #b45309; /* amber text */
+    color: #b45309;
+    /* amber text */
     font-size: 0.95rem;
     font-weight: 500;
     transition: all 0.3s ease;
@@ -976,10 +981,13 @@ body {
 }
 
 @keyframes pulseGlow {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         opacity: 0.9;
     }
+
     50% {
         transform: scale(1.15);
         opacity: 1;
@@ -988,8 +996,8 @@ body {
 }
 
 .dashboard-alert-link {
-    font-size: 0.85rem;
-    text-decoration: underline;
+    font-size: 1rem;
+    font-weight: bold;
     opacity: 0.8;
     white-space: nowrap;
     cursor: pointer;
@@ -1189,13 +1197,25 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes scaleIn {
-    from { transform: scale(0.95); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .glass-modal-header {
@@ -1479,7 +1499,7 @@ body {
         grid-template-columns: 1fr;
         gap: 1rem;
     }
-    
+
     .dashboard-title {
         font-size: 1.8rem;
     }
@@ -1514,4 +1534,4 @@ body {
 
 .btn-orange-grad:active {
     transform: translateY(0);
-}
+}

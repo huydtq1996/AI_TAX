@@ -105,22 +105,27 @@ USING (true);
 
 CREATE POLICY "Users can view their own chat sessions"
 ON chat_sessions FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own chat sessions"
 ON chat_sessions FOR INSERT
+TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own chat sessions"
 ON chat_sessions FOR UPDATE
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own chat sessions"
 ON chat_sessions FOR DELETE
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can view messages in their sessions"
 ON chat_messages FOR SELECT
+TO authenticated
 USING (
   EXISTS (
     SELECT 1 FROM chat_sessions 
@@ -131,6 +136,7 @@ USING (
 
 CREATE POLICY "Users can insert messages in their sessions"
 ON chat_messages FOR INSERT
+TO authenticated
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM chat_sessions 
@@ -176,27 +182,33 @@ ALTER TABLE transactions ENABLE ROW LEVEL SECURITY;
 -- 1. Policies cho business_settings
 CREATE POLICY "Users can view their own business settings"
 ON business_settings FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own business settings"
 ON business_settings FOR INSERT
+TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own business settings"
 ON business_settings FOR UPDATE
+TO authenticated
 USING (auth.uid() = user_id);
 
 -- 2. Policies cho transactions
 CREATE POLICY "Users can view their own transactions"
 ON transactions FOR SELECT
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can insert their own transactions"
 ON transactions FOR INSERT
+TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own transactions"
 ON transactions FOR UPDATE
+TO authenticated
 USING (auth.uid() = user_id);
 
 CREATE POLICY "Users can delete their own transactions"

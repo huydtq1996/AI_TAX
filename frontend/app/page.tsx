@@ -1540,7 +1540,7 @@ export default function Home() {
         {/* Modal Cài đặt Hộ kinh doanh */}
         {showSettingsModal && (
           <div className="glass-modal-overlay">
-            <div className="glass-modal-card" style={{ maxWidth: '450px' }}>
+            <div className="glass-modal-card" style={{ maxWidth: '650px' }}>
               <div className="glass-modal-header">
                 <h3><i className="fa-solid fa-gear"></i> Cấu hình Hộ kinh doanh</h3>
                 <button className="glass-modal-close-btn" onClick={() => setShowSettingsModal(false)}>
@@ -1611,7 +1611,7 @@ export default function Home() {
 
         {showTaxDetailModal && (
           <div className="glass-modal-overlay" style={{ zIndex: 2000 }}>
-            <div className="glass-modal-card" style={{ maxWidth: '500px' }}>
+            <div className="glass-modal-card" style={{ maxWidth: '650px' }}>
               <div className="glass-modal-header">
                 <h3><i className="fa-solid fa-calculator"></i> Chi tiết Công thức tính thuế</h3>
                 <button className="glass-modal-close-btn" onClick={() => setShowTaxDetailModal(false)}>

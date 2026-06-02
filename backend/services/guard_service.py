@@ -104,7 +104,7 @@ Nhiệm vụ của bạn là phân loại câu hỏi của người dùng nằm 
 
 1. "GREETING": Nếu câu hỏi là lời chào xã giao, cảm ơn, giới thiệu bản thân hoặc chào hỏi đơn giản (Ví dụ: "chào bạn", "hello", "cảm ơn bạn", "bạn là ai", "chúc một ngày tốt lành").
 2. "RELEVANT": Nếu câu hỏi liên quan đến luật, nghị định, thông tư về thuế, kế toán, hóa đơn, doanh nghiệp, doanh thu, chi phí, hoặc các nghĩa vụ tài chính liên quan.
-3. "UNRELATED": Nếu câu hỏi hoàn toàn không liên quan đến thuế, kế toán, doanh nghiệp hay luật pháp liên quan (Ví dụ: "thời tiết hôm nay thế nào", "cách làm bánh chưng", "viết code python", "dịch bài thơ", "tại sao bầu trời màu xanh").
+3. "UNRELATED": Nếu câu hỏi hoàn toàn không liên quan đến thuế, kế toán, doanh nghiệp hay luật pháp liên quan (Ví dụ: "thời tiết hôm nay thế nào", "cách làm bánh chưng", "viết code python", "dịch bài thơ", "tại sao bầu trời màu xanh"). ĐẶC BIỆT: Các câu hỏi đùa cợt, troll, giả định phi thực tế hoặc vũ khí/hàng cấm (ví dụ: "tính thuế cho xe tăng", "thuế bán ma túy", "thuế mua phi thuyền") CŨNG BẮT BUỘC PHẢI XẾP VÀO NHÓM UNRELATED dù có chứa từ khóa "thuế".
 
 Hãy phân loại chính xác và chỉ trả về duy nhất một từ khóa viết hoa: "GREETING", "RELEVANT" hoặc "UNRELATED". Tuyệt đối không trả về bất kỳ từ nào khác ngoài 3 từ khóa trên.
 """
