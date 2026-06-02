@@ -510,7 +510,7 @@ def download_transaction_template():
         data = {
             "Ngay (YYYY-MM-DD)": ["2026-06-01", "2026-06-01"],
             "Loai (Thu/Chi)": ["Thu", "Chi"],
-            "SoTien": [500000, 150000],
+            "SoTien": [57600000, 12850000],
             "DienGiai": ["Doanh thu ban le tap hoa", "Mua tui dung va bao bi"]
         }
         df = pd.DataFrame(data)
