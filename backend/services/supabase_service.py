@@ -104,6 +104,22 @@ class SupabaseService:
         if response.status_code == 200:
             results = response.json()
             if results:
+                # Lọc kết quả theo yêu cầu: liên quan đến "hộ kinh doanh"
+                filtered_results_by_keyword = []
+                required_keywords = ["hộ kinh doanh cá thể", "hộ kinh doanh", "cá nhân kinh doanh"]
+
+                for r in results:
+                    content_lower = r.get('content', '').lower()
+                    has_required = any(kw in content_lower for kw in required_keywords)
+
+                    if has_required:
+                        filtered_results_by_keyword.append(r)
+                
+                results = filtered_results_by_keyword
+
+                if not results:
+                    return "Không tìm thấy dữ liệu liên quan phù hợp với điều kiện hộ kinh doanh.", []
+
                 # (1). Lọc kết quả với chiến thuật Đa dạng hóa (Round-Robin)
                 from collections import defaultdict
 

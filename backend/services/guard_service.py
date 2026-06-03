@@ -127,9 +127,9 @@ class GuardService:
         
         # Nhóm A: Từ khóa thuế cốt lõi (Core) -> Trọng số cao (+2)
         core_keywords = [
-            "thuế", "vat", "gtgt", "tncn", "tndn", "ttđb", "thuế xuất nhập khẩu",
+            "thuế", "vat", "gtgt", "tncn", "ttđb", "thuế xuất nhập khẩu",
             "kê khai", "khai báo", "nộp thuế", "hoàn thuế", "quyết toán", "tờ khai",
-            "hóa đơn", "giá trị gia tăng", "thu nhập cá nhân", "thu nhập doanh nghiệp",
+            "hóa đơn", "giá trị gia tăng", "thu nhập cá nhân",
             "hộ kinh doanh", "cá nhân kinh doanh", "mã số thuế", "mst"
         ]
         

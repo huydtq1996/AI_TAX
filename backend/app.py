@@ -71,7 +71,7 @@ def health_check():
     return jsonify({"status": "ok", "message": "AI Tax Assistant Backend is running!"})
 
 @app.route('/api/chat', methods=['POST'])
-@limit_requests(10, 60)
+@limit_requests(15, 60)
 def chat():
     # Nhận dữ liệu dạng Form Data (Hỗ trợ File)
     user_message = request.form.get('message', '')
