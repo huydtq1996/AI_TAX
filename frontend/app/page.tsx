@@ -822,22 +822,29 @@ export default function Home() {
     const currentFileName = selectedFile ? selectedFile.name : undefined;
     const currentFileType = selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() : undefined;
 
-    const newMessages = [...messages, {
-      id: Date.now().toString(),
-      text,
-      isUser: true,
-      fileName: currentFileName,
-      fileType: currentFileType
-    }];
+    const userId = Date.now().toString();
+    const typingId = "typing-" + (Date.now() + 1);
+    
+    const newMessages = [
+      ...messages, 
+      {
+        id: userId,
+        text,
+        isUser: true,
+        fileName: currentFileName,
+        fileType: currentFileType
+      },
+      { 
+        id: typingId, 
+        text: "Đang suy nghĩ", 
+        isUser: false, 
+        isTyping: true 
+      }
+    ];
     setMessages(newMessages);
     setInputMessage("");
     setSelectedFile(null); // Clear file after adding to messages state
 
-    const typingId = "typing-" + Date.now();
-    setMessages((prev) => [
-      ...prev,
-      { id: typingId, text: "Đang suy nghĩ", isUser: false, isTyping: true },
-    ]);
 
     const formData = new FormData();
     formData.append("message", text);
@@ -862,7 +869,8 @@ export default function Home() {
         setCurrentSessionId(data.session_id);
         // Refresh danh sách bên trái (giả lập)
         if (!chatSessions.find(s => s.id === data.session_id)) {
-          setChatSessions([{ id: data.session_id, title: text.substring(0, 30) + '...' }, ...chatSessions]);
+          const cleanTitle = text.replace(/[#*_`]/g, '').trim();
+          setChatSessions([{ id: data.session_id, title: cleanTitle.substring(0, 30) + '...' }, ...chatSessions]);
         }
       }
 
@@ -2340,7 +2348,7 @@ export default function Home() {
                   <button
                     onClick={() => loadSession(session.id)}
                     style={{ flex: 1, textAlign: 'left', padding: '12px 10px', border: 'none', backgroundColor: 'transparent', color: currentSessionId === session.id ? '#041e49' : '#444', cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
-                    <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title}
+                    <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title.replace(/[#*_`]/g, '').trim()}
                   </button>
                   <button
                     onClick={(e) => deleteSession(e, session.id)}

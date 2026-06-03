@@ -1,6 +1,7 @@
 import os
 import time
 import io
+import math
 import pandas as pd
 from collections import defaultdict
 from functools import wraps
@@ -43,7 +44,7 @@ def limit_requests(max_requests=20, window_seconds=60):
             rate_limit_records[rate_limit_key] = timestamps
             
             if len(timestamps) >= max_requests:
-                wait_time = int(window_seconds - (now - timestamps[0]))
+                wait_time = math.ceil(window_seconds - (now - timestamps[0]))
                 if wait_time <= 0:
                     wait_time = 1
                 return jsonify({
@@ -105,31 +106,17 @@ def chat():
     is_relevant = True
     if user_message and not file:
         relevance = guard_service.check_relevance(user_message, gemini_service)
-        if relevance == "UNRELATED":
-            ai_response = "Đây là chatbot về thuế!"
-            
-            # Tạo Session nếu chưa có
-            if user_token and not session_id:
-                title = user_message[:40] + "..."
-                session_id = supabase_service.create_session(title, user_token)
-                
-            # Lưu tin nhắn User & AI vào DB
-            if user_token and session_id:
-                supabase_service.save_message(session_id, 'user', user_message, user_token)
-                supabase_service.save_message(session_id, 'assistant', ai_response, user_token)
-                
-            return jsonify({
-                "text": ai_response,
-                "tax_table": None,
-                "session_id": session_id,
-                "sources": []
-            })
-        elif relevance == "GREETING":
+        if relevance == "GREETING":
             is_relevant = False
 
     # Tạo Session nếu chưa có
     if user_token and not session_id:
-        title = user_message[:40] + "..." if user_message else "Kế hoạch Thuế"
+        if user_message:
+            import re
+            clean_title = re.sub(r'[#\*_\`\-]', '', user_message).strip()
+            title = clean_title[:40] + "..." if clean_title else "Kế hoạch Thuế"
+        else:
+            title = "Kế hoạch Thuế"
         session_id = supabase_service.create_session(title, user_token)
         
     # 2. Xử lý File Upload

@@ -693,4 +693,4 @@ class SupabaseService:
             return response.status_code in (200, 201, 204)
         except Exception as e:
             print(f"Exception updating tax payment: {e}")
-        return False
+        return False
