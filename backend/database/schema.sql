@@ -23,7 +23,6 @@ CREATE TABLE chat_messages (
     session_id UUID REFERENCES chat_sessions(id) ON DELETE CASCADE,
     role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system')), -- Phân biệt ai là người gửi
     content TEXT NOT NULL,                                              -- Nội dung chat
-    attached_file_url TEXT,                                             -- Đường dẫn file/ảnh (Lưu trên Supabase Storage)
     file_name TEXT,                                                     -- Tên tệp tin (để hiển thị icon)
     file_type TEXT,                                                     -- Loại tệp tin (PDF, XLSX, ...)
     tax_result_snapshot JSONB,                                          -- Lưu lại bảng tính thuế (nếu có) để khi mở lại chat vẫn còn số liệu
@@ -169,7 +168,8 @@ CREATE TABLE transactions (
     date DATE NOT NULL DEFAULT CURRENT_DATE,
     amount TEXT NOT NULL,
     description TEXT NOT NULL DEFAULT '',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
 CREATE INDEX idx_transactions_user_id ON transactions(user_id);
@@ -247,6 +247,39 @@ WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "Users can update their own tax payments"
 ON tax_payments FOR UPDATE
+TO authenticated
+USING (auth.uid() = user_id);
+
+
+-- ==============================================================================
+-- BẢNG 7: LƯU TRỮ THÔNG TIN FILE NGƯỜI DÙNG TẢI LÊN
+-- ==============================================================================
+CREATE TABLE user_files (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE DEFAULT auth.uid(),
+    attached_file_url TEXT,
+    file_name TEXT NOT NULL,
+    file_type TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Index để truy vấn danh sách file của user nhanh hơn
+CREATE INDEX idx_user_files_user_id ON user_files(user_id);
+
+ALTER TABLE user_files ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own files"
+ON user_files FOR SELECT
+TO authenticated
+USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own files"
+ON user_files FOR INSERT
+TO authenticated
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own files"
+ON user_files FOR DELETE
 TO authenticated
 USING (auth.uid() = user_id);
 

@@ -11,6 +11,7 @@ from flask_cors import CORS
 
 from services.gemini_service import GeminiService
 from services.supabase_service import SupabaseService
+from services.tax_schedule_service import TaxScheduleService
 from services.tax_calculator import TaxCalculator
 from services.guard_service import GuardService
 from services.encryption_service import EncryptionService
@@ -20,6 +21,7 @@ load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
+app.json.sort_keys = False
 
 # Lưu trữ lịch sử giới hạn tần suất yêu cầu trong bộ nhớ (RAM): { ip: [mốc_thời_gian1, mốc_thời_gian2, ...] }
 rate_limit_records = defaultdict(list)
@@ -59,16 +61,62 @@ def limit_requests(max_requests=20, window_seconds=60):
 # Khởi tạo các dịch vụ
 gemini_service = GeminiService()
 supabase_service = SupabaseService()
+tax_schedule_service = TaxScheduleService()
 tax_calculator = TaxCalculator()
 guard_service = GuardService()
 encryption_service = EncryptionService()
 
+# Đường dẫn thư mục uploads tuyệt đối
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
+
 # Đảm bảo thư mục uploads tồn tại
-os.makedirs("uploads", exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
     return jsonify({"status": "ok", "message": "AI Tax Assistant Backend is running!"})
+
+@app.route('/api/tax-rates', methods=['GET'])
+def get_tax_rates():
+    """Trả về bảng tỷ lệ thuế từ hệ thống Backend để Frontend tự động tính toán (Tránh trùng lặp logic)"""
+    rates = tax_calculator.tax_rates
+    
+    display_info = {}
+    for cat, meta in tax_calculator.category_metadata.items():
+        r = rates.get(cat, {"gtgt": 0, "tncn": 0})
+        if cat in ("cho_thue_tai_san_dai_ly", "dich_vu_noi_dung_so"):
+            tncn_val = r["tncn"] * 100
+            tncn_pct = f"{tncn_val:.0f}%" if tncn_val.is_integer() else f"{tncn_val:.1f}%"
+            group_str = f"{meta['group_name']} (TNCN {tncn_pct})"
+        else:
+            gtgt_val = r["gtgt"] * 100
+            tncn_val = r["tncn"] * 100
+            gtgt_pct = f"{gtgt_val:.0f}%" if gtgt_val.is_integer() else f"{gtgt_val:.1f}%"
+            tncn_pct = f"{tncn_val:.0f}%" if tncn_val.is_integer() else f"{tncn_val:.1f}%"
+            group_str = f"{meta['group_name']} (GTGT {gtgt_pct}, TNCN {tncn_pct})"
+            
+        display_info[cat] = {
+            "name": meta["name"],
+            "group": group_str
+        }
+    
+    rates_data = {}
+    for cat, r in rates.items():
+        info = display_info.get(cat, {"name": cat, "group": "Hoạt động kinh doanh khác"})
+        rates_data[cat] = {
+            "name": info["name"],
+            "group": info["group"],
+            "gtgt": r.get("gtgt", 0),
+            "tncn": r.get("tncn", 0),
+            "total": r.get("gtgt", 0) + r.get("tncn", 0)
+        }
+        
+    return jsonify({
+        "rates": rates_data,
+        "milestones": tax_calculator.revenue_milestones,
+        "net_rates": tax_calculator.tncn_rates_net
+    })
 
 @app.route('/api/chat', methods=['POST'])
 @limit_requests(15, 60)
@@ -88,9 +136,9 @@ def chat():
         file.seek(0, os.SEEK_END)
         file_size = file.tell()
         file.seek(0)  # reset file pointer
-        max_size = 5 * 1024 * 1024  # 5MB
+        max_size = 2 * 1024 * 1024  # 2MB
         if file_size > max_size:
-            return jsonify({"error": "Kích thước tệp tin không được vượt quá 5MB."}), 400
+            return jsonify({"error": "Kích thước tệp tin không được vượt quá 2MB."}), 400
             
     if not user_message and not file:
         return jsonify({"error": "Message is required"}), 400
@@ -124,13 +172,17 @@ def chat():
     file_name = None
     file_type = None
     if file:
-        os.makedirs("uploads", exist_ok=True)
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
         file_name = file.filename
         file_type = file_name.split('.')[-1].upper() if '.' in file_name else "FILE"
-        file_path = os.path.join("uploads", file_name)
+        file_path = os.path.join(UPLOAD_DIR, file_name)
         file.save(file_path)
         # Mã hóa tệp tin ngay lập tức trên đĩa
         encryption_service.encrypt_file(file_path)
+        
+        # Lưu thông tin tệp tin vào bảng user_files để quản lý độc lập với lịch sử chat
+        if user_token:
+            supabase_service.save_user_file(user_token, file_name, file_type)
 
     # 3. Lưu tin nhắn của User
     if user_token and session_id:
@@ -155,9 +207,16 @@ def chat():
         legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
         
     # 4. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
-    ai_response = gemini_service.generate_response(user_message, context=legal_context, file_path=file_path)
+    ai_response = gemini_service.generate_response(
+        user_message, 
+        context=legal_context, 
+        file_path=file_path, 
+        has_tax_result=(tax_result is not None)
+    )
     
     # Nếu lỗi API hoặc từ chối trả lời thì ẩn nguồn tham chiếu
+    if ai_response is None:
+        ai_response = "Xin lỗi, tôi không nhận được phản hồi từ mô hình AI."
     is_error = ai_response.startswith("Lỗi") or "Hết quota" in ai_response
     is_refusal = "Đây là chatbot về thuế!" in ai_response
     if is_error or is_refusal:
@@ -182,7 +241,7 @@ def chat():
     return jsonify(response)
 
 @app.route('/api/files', methods=['GET'])
-@limit_requests(20, 60)
+@limit_requests(30, 60)
 def list_files():
     user_token = request.headers.get('Authorization')
     if not user_token:
@@ -197,7 +256,7 @@ def list_files():
     user_files = supabase_service.get_user_files(user_token)
     allowed_filenames = {f.get('file_name') for f in user_files if f.get('file_name')}
     
-    upload_dir = "uploads"
+    upload_dir = UPLOAD_DIR
     if not os.path.exists(upload_dir):
         return jsonify([])
     
@@ -219,7 +278,7 @@ def list_files():
     return jsonify(files)
 
 @app.route('/api/files/<filename>', methods=['GET'])
-@limit_requests(20, 60)
+@limit_requests(30, 60)
 def download_file(filename):
     user_token = request.headers.get('Authorization')
     if not user_token:
@@ -241,7 +300,7 @@ def download_file(filename):
     import io
     import mimetypes
     
-    file_path = os.path.join("uploads", filename)
+    file_path = os.path.join(UPLOAD_DIR, filename)
     if not os.path.exists(file_path):
         return jsonify({"error": "File not found"}), 404
         
@@ -314,7 +373,7 @@ def delete_session(session_id):
         return jsonify({"error": "Failed to delete session"}), 500
 
 @app.route('/api/files/<filename>', methods=['DELETE'])
-@limit_requests(20, 60)
+@limit_requests(30, 60)
 def delete_file(filename):
     user_token = request.headers.get('Authorization')
     if not user_token:
@@ -332,9 +391,10 @@ def delete_file(filename):
     if filename not in allowed_filenames:
         return jsonify({"error": "Forbidden: Bạn không có quyền xóa tệp tin này"}), 403
         
-    file_path = os.path.join("uploads", filename)
+    file_path = os.path.join(UPLOAD_DIR, filename)
     if os.path.exists(file_path):
         os.remove(file_path)
+        supabase_service.delete_user_file(user_token, filename)
         return jsonify({"message": f"Deleted {filename}"})
     return jsonify({"error": "File not found"}), 404
 
@@ -493,7 +553,7 @@ def delete_transaction(transaction_id):
         return jsonify({"error": "Failed to delete transaction"}), 500
 
 @app.route('/api/transactions/template', methods=['GET'])
-@limit_requests(100, 60)
+@limit_requests(30, 60)
 def download_transaction_template():
     try:
         # Tạo dữ liệu mẫu cho template
@@ -539,20 +599,20 @@ def upload_ocr_transaction():
     if not file:
         return jsonify({"error": "Không tìm thấy tệp tin được tải lên."}), 400
         
-    # 1. Kiểm tra kích thước tệp tin (tối đa 5MB)
+    # 1. Kiểm tra kích thước tệp tin (tối đa 2MB)
     file.seek(0, os.SEEK_END)
     file_size = file.tell()
     file.seek(0)
-    max_size = 5 * 1024 * 1024  # 5MB
+    max_size = 2 * 1024 * 1024  # 2MB
     if file_size > max_size:
-        return jsonify({"error": "Kích thước tệp tin không được vượt quá 5MB."}), 400
+        return jsonify({"error": "Kích thước tệp tin không được vượt quá 2MB."}), 400
         
     # Lưu tệp tin tạm thời
     file_name = file.filename
     ext = os.path.splitext(file_name)[1].lower()
     temp_filename = f"ocr_{int(time.time())}_{file_name}"
-    os.makedirs("uploads", exist_ok=True)
-    file_path = os.path.join("uploads", temp_filename)
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    file_path = os.path.join(UPLOAD_DIR, temp_filename)
     
     file.save(file_path)
     encryption_service.encrypt_file(file_path)
@@ -668,25 +728,6 @@ def upload_ocr_transaction():
             except Exception as clean_err:
                 print(f"Không thể xóa file tạm sau xử lý: {clean_err}")
 
-if __name__ == '__main__':
-    app.run(debug=True, port=5000)
-
-@app.route('/api/tax-payments', methods=['GET'])
-@limit_requests(30, 60)
-def get_tax_payments():
-    user_token = request.headers.get('Authorization')
-    if not user_token:
-        user_token = request.args.get('supabase_token')
-    else:
-        if user_token.startswith("Bearer "):
-            user_token = user_token[7:]
-            
-    if not user_token:
-        return jsonify({"error": "Unauthorized"}), 401
-        
-    payments = supabase_service.get_tax_payments(user_token)
-    return jsonify(payments)
-
 @app.route('/api/tax-payments', methods=['POST'])
 @limit_requests(30, 60)
 def update_tax_payment():
@@ -714,9 +755,43 @@ def update_tax_payment():
     if not period_key or not due_date:
         return jsonify({"error": "period_key and due_date are required"}), 400
         
-    success = supabase_service.update_tax_payment(user_token, period_key, due_date, float(tax_amount), float(paid_amount), paid_date)
+    success = tax_schedule_service.update_tax_payment(user_token, period_key, due_date, float(tax_amount), float(paid_amount), paid_date)
     if success:
         return jsonify({"message": "Tax payment updated successfully"})
     else:
         return jsonify({"error": "Failed to update tax payment"}), 500
+
+@app.route('/api/tax-schedule-periods', methods=['GET'])
+@limit_requests(30, 60)
+def get_tax_schedule_periods_api():
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not user_token:
+        return jsonify({"error": "Unauthorized"}), 401
+        
+    transactions = supabase_service.get_transactions(user_token)
+    settings = supabase_service.get_business_settings(user_token)
+    tax_payments = tax_schedule_service.get_tax_payments(user_token)
+    tax_rates = tax_calculator.tax_rates
+    
+    business_category = settings.get('business_category', 'ban_buon_ban_le')
+    declaration_type = settings.get('declaration_type', 'quy')
+    
+    periods = tax_schedule_service.get_tax_schedule_periods(
+        transactions, 
+        declaration_type, 
+        business_category, 
+        tax_payments, 
+        tax_rates,
+        user_token=user_token
+    )
+    return jsonify(periods)
+
+if __name__ == '__main__':
+    app.run(debug=True, port=5000)
 
