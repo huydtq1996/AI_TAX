@@ -264,9 +264,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </span>
                 </div>
                 {isTaxExempt ? (
-                  <div>Còn {(remainingToThreshold / 1000000).toFixed(1)} Tr đến ngưỡng chịu thuế</div>
+                  <div><i className="fa-solid fa-info-circle"></i> Còn {(remainingToThreshold / 1000000).toFixed(1)} Tr đến ngưỡng chịu thuế</div>
                 ) : (
-                  <div>Đã vượt ngưỡng chịu thuế</div>
+                  <div><i className="fa-solid fa-exclamation-triangle"></i> Đã vượt ngưỡng miễn thuế</div>
                 )}
               </div>
             )}
