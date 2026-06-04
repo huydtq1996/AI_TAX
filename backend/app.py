@@ -144,9 +144,10 @@ def chat():
         return jsonify({"error": "Message is required"}), 400
         
     # 1. Guard Service - Chống Prompt Injection
-    if not guard_service.check_input(user_message):
+    is_safe, blocked_reason = guard_service.check_input(user_message)
+    if not is_safe:
         return jsonify({
-            "error": "Tin nhắn bị từ chối: Phát hiện nội dung không hợp lệ"
+            "error": f"Tin nhắn bị từ chối: {blocked_reason}"
         }), 403
         
     # 1.1 Kiểm tra sự liên quan của câu hỏi (AI Check 0) trước khi chạy RAG
@@ -223,8 +224,9 @@ def chat():
         sources = []
     else:
         # 4.1 Guard Service - Kiểm tra phản hồi (Bảo mật & Phòng thủ)
-        if not guard_service.check_response(ai_response):
-            ai_response = "Xin lỗi, yêu cầu của bạn không thể thực hiện được vì lý do bảo mật hệ thống."
+        is_safe_resp, blocked_reason_resp = guard_service.check_response(ai_response)
+        if not is_safe_resp:
+            ai_response = f"Xin lỗi, yêu cầu của bạn không thể thực hiện được: {blocked_reason_resp}"
             sources = []
         
     # Lưu tin nhắn của AI

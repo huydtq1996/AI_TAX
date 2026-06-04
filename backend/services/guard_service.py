@@ -47,18 +47,19 @@ class GuardService:
         """
         return user_input.replace("<", "&lt;").replace(">", "&gt;") if user_input else ""
 
-    def check_input(self, user_input: str) -> bool:
+    def check_input(self, user_input: str) -> tuple[bool, str | None]:
         """
         BƯỚC 2: Bộ lọc bảo mật đa lớp (Multi-layer WAF for LLM).
-        Trả về True nếu an toàn, False nếu có dấu hiệu tấn công.
+        Trả về (True, None) nếu an toàn, (False, lý do) nếu có dấu hiệu tấn công.
         """
         if not user_input or not user_input.strip():
-            return True
+            return True, None
 
         # Lớp 1: Kiểm tra độ dài (Ngăn chặn tấn công nhồi nhét / tràn bộ nhớ)
         if len(user_input) > self.max_length:
-            print("[Guard] BLOCKED: Input too long")
-            return False
+            reason = "Câu hỏi quá dài"
+            print(f"[Guard] BỊ CHẶN: {reason}")
+            return False, reason
 
         # Lớp 2: Phát hiện bất thường (Ký tự rác)
         # Hackers hay dùng ký tự rác (!!!###$$$%%%) để làm rối Tokenizer của AI
@@ -67,24 +68,27 @@ class GuardService:
         
         # Nếu hơn 40% là ký tự đặc biệt, có thể là mã độc hoặc dữ liệu rác
         if special_char_ratio > 0.4 and len(user_input) > 20:
-             print("[Guard] BLOCKED: Too many special characters (Tokenizer attack?)")
-             return False
+             reason = "Câu hỏi có quá nhiều ký tự đặc biệt (Tokenizer attack?)"
+             print(f"[Guard] BỊ CHẶN: {reason}")
+             return False, reason
 
         lower_input = user_input.lower()
 
         # Lớp 3: Quét từ khóa thao túng tâm lý AI (Jailbreak / Leakage)
         for keyword in self.forbidden_keywords:
             if keyword in lower_input:
-                print(f"[Guard] BLOCKED: Forbidden keyword detected '{keyword}'")
-                return False
+                reason = f"Phát hiện từ khóa cấm '{keyword}'"
+                print(f"[Guard] BỊ CHẶN: {reason}")
+                return False, reason
 
         # Lớp 4: Quét cú pháp mã độc bằng Biểu thức chính quy (Regex)
         for pattern in self.malicious_patterns:
             if pattern.search(user_input):
-                print("[Guard] BLOCKED: Malicious syntax detected (Regex)")
-                return False
+                reason = "Phát hiện cú pháp độc hại (Regex)"
+                print(f"[Guard] BỊ CHẶN: {reason}")
+                return False, reason
                 
-        return True
+        return True, None
 
     def check_relevance(self, prompt: str, gemini_service=None) -> str:
         """
@@ -142,18 +146,19 @@ class GuardService:
         ]
         
         # Chấm điểm
+        has_core = False
         for kw in core_keywords:
             if kw in clean_input:
                 score += 2
+                has_core = True
                 
         for kw in context_keywords:
             if kw in clean_input:
                 score += 1
                 
         # 3. Phán quyết
-        # Chỉ gọi RAG nếu câu hỏi có ít nhất 1 từ khóa cốt lõi (>=2đ) 
-        # HOẶC có nhiều từ khóa ngữ cảnh (>=2đ)
-        if score >= 2:
+        # Chỉ gọi RAG nếu câu hỏi có ít nhất 1 từ khóa cốt lõi (has_core là True)
+        if has_core:
             return True
             
         return False
@@ -162,16 +167,17 @@ class GuardService:
     # QUY TRÌNH KIỂM TRA ĐẦU RA (OUTPUT PIPELINE)
     # ==========================================
 
-    def check_response(self, response: str) -> bool:
+    def check_response(self, response: str) -> tuple[bool, str | None]:
         """
         BƯỚC 5: Kiểm tra phản hồi của AI theo các nguyên tắc bảo mật.
-        Trả về True nếu phản hồi hợp lệ và an toàn, False nếu vi phạm.
+        Trả về (True, None) nếu phản hồi hợp lệ và an toàn, (False, lý do) nếu vi phạm.
         """
         # 1. Không bao giờ trả về câu trả lời rỗng hoặc chuỗi rỗng
         if self.security_rules.get("no_empty_response"):
             if not response or not response.strip():
-                print("[Guard] BLOCKED: Empty response detected.")
-                return False
+                reason = "Phát hiện phản hồi rỗng"
+                print(f"[Guard] BỊ CHẶN: {reason}.")
+                return False, reason
 
         # 2. Tuyệt đối không tiết lộ chỉ thị hệ thống, prompt, context hoặc ngữ cảnh nội bộ
         if self.security_rules.get("prevent_leakage"):
@@ -182,8 +188,9 @@ class GuardService:
             response_lower = response.lower()
             for keyword in leakage_keywords:
                 if keyword in response_lower:
-                    print(f"[Guard] BLOCKED: Prompt/Internal info leakage detected in response ('{keyword}')")
-                    return False
+                    reason = f"Phát hiện rò rỉ thông tin prompt/internal trong phản hồi ('{keyword}')"
+                    print(f"[Guard] BỊ CHẶN: {reason}")
+                    return False, reason
 
         # 3. Chỉ trả lời bằng Tiếng Việt
         if self.security_rules.get("vietnamese_only"):
@@ -200,8 +207,9 @@ class GuardService:
                     vietnamese_no_accent_words = {"cho", "cua", "toi", "khong", "co", "ve", "duoc", "trong", "va", "nhung", "la", "cac", "mot", "nguoi"}
                     words = set(response.lower().split())
                     if not words.intersection(vietnamese_no_accent_words):
-                        print("[Guard] BLOCKED: Response is not in Vietnamese (Language violation)")
-                        return False
+                        reason = "Câu trả lời không bằng tiếng Việt (Violation ngôn ngữ)"
+                        print(f"[Guard] BỊ CHẶN: {reason}")
+                        return False, reason
 
-        return True
+        return True, None
 
