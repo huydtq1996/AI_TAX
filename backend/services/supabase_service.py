@@ -518,7 +518,7 @@ class SupabaseService:
 
     def get_business_settings(self, user_token):
         if not self.url or not self.key or not user_token:
-            return {"business_name": "Mimimart", "business_category": "ban_buon_ban_le", "declaration_type": "quy"}
+            return {"business_name": "My Business", "business_category": "ban_buon_ban_le", "declaration_type": "quy"}
         headers = {
             "apikey": self.key, 
             "Authorization": f"Bearer {user_token}", 
@@ -551,7 +551,7 @@ class SupabaseService:
                     return record
                 else:
                     # Tạo cấu hình mặc định (mã hóa trước khi gửi đi)
-                    enc_name = self.encryption_service.encrypt_text("Mimimart")
+                    enc_name = self.encryption_service.encrypt_text("My Business")
                     enc_cat = self.encryption_service.encrypt_text("ban_buon_ban_le")
                     enc_type = self.encryption_service.encrypt_text("quy")
                     create_resp = requests.post(
@@ -563,7 +563,7 @@ class SupabaseService:
                           create_data = create_resp.json()
                           if create_data and len(create_data) > 0:
                               record = create_data[0]
-                              record["business_name"] = "Mimimart"
+                              record["business_name"] = "My Business"
                               record["business_category"] = "ban_buon_ban_le"
                               record["declaration_type"] = "quy"
                               return record

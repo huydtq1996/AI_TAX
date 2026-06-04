@@ -238,8 +238,8 @@ export const TaxScheduleView: React.FC<TaxScheduleViewProps> = ({
                 </div>
               </div>
               <div className="glass-modal-footer">
-                <button type="button" className="icon-button" onClick={() => setPaymentModalOpen(false)} style={{ color: 'rgba(0,0,0,0.5)', background: 'none', border: 'none', cursor: 'pointer' }}>Hủy</button>
-                <button type="submit" className="primary-button btn-purple-grad" style={{ padding: '8px 20px', borderRadius: '8px' }}>Lưu thông tin</button>
+                <button type="button" className="glass-btn-secondary" onClick={() => setPaymentModalOpen(false)} style={{ padding: '8px 20px', borderRadius: '8px' }}>Hủy</button>
+                <button type="submit" className="glass-btn-primary btn-purple-grad" style={{ padding: '8px 20px', borderRadius: '8px', border: 'none' }}>Lưu thông tin</button>
               </div>
             </form>
           </div>

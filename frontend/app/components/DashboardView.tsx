@@ -305,9 +305,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
           <button
             onClick={handleSignOut}
-            style={{ background: 'none', border: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}
+            style={{ padding: '0.5rem 1rem', background: 'none', border: '1px solid rgb(239, 68, 68)', borderRadius: '8px', color: 'rgb(239, 68, 68)', cursor: 'pointer', fontSize: '0.9rem' }}
           >
-            <i className="fa-solid fa-right-from-bracket"></i> Đăng xuất tài khoản
+            <i className="fa-solid fa-right-from-bracket"></i> <span style={{ textDecoration: 'underline' }}>Đăng xuất tài khoản</span>
           </button>
         </div>
       </div>

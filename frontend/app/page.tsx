@@ -67,6 +67,7 @@ export default function Home() {
   });
   const [taxSchedulePeriods, setTaxSchedulePeriods] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   const currentUserEmailRef = useRef<string | null>(null);
 
@@ -416,10 +417,13 @@ export default function Home() {
     }
   };
 
-  const handleSignOut = async () => {
-    if (window.confirm("Bạn có chắc chắn muốn đăng xuất?")) {
-      await supabase.auth.signOut();
-    }
+  const handleSignOut = () => {
+    setShowSignOutConfirm(true);
+  };
+
+  const handleSignOutConfirm = async () => {
+    setShowSignOutConfirm(false);
+    await supabase.auth.signOut();
   };
 
   const formatVND = (amount: number) => {
@@ -537,76 +541,115 @@ export default function Home() {
     );
   }
 
-  if (viewMode === 'dashboard') {
+  const renderActiveView = () => {
+    if (viewMode === 'dashboard') {
+      return (
+        <DashboardView
+          transactions={transactions}
+          businessCategory={businessCategory}
+          businessName={businessName}
+          setViewMode={setViewMode}
+          setShowSettingsModal={setShowSettingsModal}
+          getTaxDeadlineInfo={getTaxDeadlineInfo}
+          formatVND={formatVND}
+          handleCancelEditTransaction={() => { }}
+          showTaxDetailModal={showTaxDetailModal}
+          setShowTaxDetailModal={setShowTaxDetailModal}
+          handleSignOut={handleSignOut}
+          showSettingsModal={showSettingsModal}
+          isSavingSettings={isSavingSettings}
+          handleSaveSettings={handleSaveSettings}
+          setBusinessName={setBusinessName}
+          setBusinessCategory={setBusinessCategory}
+          declarationType={declarationType}
+          setDeclarationType={setDeclarationType}
+          getCategoryRate={getCategoryRate}
+          taxRates={taxRates}
+          taxMethod={taxMethod}
+          setTaxMethod={setTaxMethod}
+          isLoading={isLoading}
+          milestones={milestones}
+          netRates={netRates}
+        />
+      );
+    }
+
+    if (viewMode === 'ledger') {
+      return (
+        <LedgerView
+          transactions={transactions}
+          userToken={userToken}
+          setViewMode={setViewMode}
+          fetchTransactions={fetchTransactions}
+          formatVND={formatVND}
+        />
+      );
+    }
+
+    if (viewMode === 'tax_schedule') {
+      return (
+        <TaxScheduleView
+          transactions={transactions}
+          declarationType={declarationType}
+          userToken={userToken}
+          setViewMode={setViewMode}
+          setShowSettingsModal={setShowSettingsModal}
+          fetchTaxSchedulePeriods={fetchTaxSchedulePeriods}
+          getTaxSchedulePeriods={() => taxSchedulePeriods}
+          formatVND={formatVND}
+          formatDateDisplay={formatDateDisplay}
+        />
+      );
+    }
+
     return (
-      <DashboardView
-        transactions={transactions}
-        businessCategory={businessCategory}
-        businessName={businessName}
-        setViewMode={setViewMode}
-        setShowSettingsModal={setShowSettingsModal}
-        getTaxDeadlineInfo={getTaxDeadlineInfo}
-        formatVND={formatVND}
-        handleCancelEditTransaction={() => { }}
-        showTaxDetailModal={showTaxDetailModal}
-        setShowTaxDetailModal={setShowTaxDetailModal}
-        handleSignOut={handleSignOut}
-        showSettingsModal={showSettingsModal}
-        isSavingSettings={isSavingSettings}
-        handleSaveSettings={handleSaveSettings}
-        setBusinessName={setBusinessName}
-        setBusinessCategory={setBusinessCategory}
-        declarationType={declarationType}
-        setDeclarationType={setDeclarationType}
-        getCategoryRate={getCategoryRate}
+      <ChatView
+        userToken={userToken}
+        userEmail={userEmail}
         taxRates={taxRates}
-        taxMethod={taxMethod}
-        setTaxMethod={setTaxMethod}
-        isLoading={isLoading}
-        milestones={milestones}
-        netRates={netRates}
-      />
-    );
-  }
-
-  if (viewMode === 'ledger') {
-    return (
-      <LedgerView
-        transactions={transactions}
-        userToken={userToken}
-        setViewMode={setViewMode}
-        fetchTransactions={fetchTransactions}
+        groupedCategories={groupedCategories}
         formatVND={formatVND}
-      />
-    );
-  }
-
-  if (viewMode === 'tax_schedule') {
-    return (
-      <TaxScheduleView
-        transactions={transactions}
-        declarationType={declarationType}
-        userToken={userToken}
+        handleNumberChange={handleNumberChange}
         setViewMode={setViewMode}
-        setShowSettingsModal={setShowSettingsModal}
-        fetchTaxSchedulePeriods={fetchTaxSchedulePeriods}
-        getTaxSchedulePeriods={() => taxSchedulePeriods}
-        formatVND={formatVND}
-        formatDateDisplay={formatDateDisplay}
+        handleSignOut={handleSignOut}
       />
     );
-  }
+  };
 
   return (
-    <ChatView
-      userToken={userToken}
-      userEmail={userEmail}
-      taxRates={taxRates}
-      groupedCategories={groupedCategories}
-      formatVND={formatVND}
-      handleNumberChange={handleNumberChange}
-      setViewMode={setViewMode}
-      handleSignOut={handleSignOut}
-    />
+    <>
+      {renderActiveView()}
+      {showSignOutConfirm && (
+        <div className="glass-modal-overlay" style={{ zIndex: 3000 }}>
+          <div className="glass-modal-card" style={{ maxWidth: '400px', textAlign: 'center', padding: '32px 24px' }}>
+            <div style={{ fontSize: '3rem', color: '#ef4444', marginBottom: '16px' }}>
+              <i className="fa-solid fa-right-from-bracket"></i>
+            </div>
+            <h3 style={{ marginBottom: '12px', fontSize: '1.25rem' }}>Xác nhận đăng xuất</h3>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '24px', lineHeight: '1.6' }}>
+              Bạn có chắc chắn muốn đăng xuất khỏi tài khoản Hộ kinh doanh của mình không?
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
+              <button
+                type="button"
+                className="glass-btn-secondary"
+                style={{ padding: '8px 20px', minWidth: '100px' }}
+                onClick={() => setShowSignOutConfirm(false)}
+              >
+                Hủy
+              </button>
+              <button
+                type="button"
+                className="glass-btn-primary"
+                style={{ padding: '8px 20px', minWidth: '100px', backgroundColor: '#ef4444', borderColor: '#ef4444' }}
+                onClick={handleSignOutConfirm}
+              >
+                Đăng xuất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

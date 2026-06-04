@@ -70,7 +70,12 @@ class GeminiService:
 
         # Kiểm tra nếu chỉ gửi file mà không kèm tin nhắn yêu cầu
         if file_path and not safe_prompt.strip():
-            return "Tôi đã nhận được tệp tin của bạn. Vui lòng cung cấp thêm thông tin hoặc nêu rõ yêu cầu (ví dụ: cần tính thuế, trích xuất giao dịch, hay tư vấn điều luật nào...) để tôi có thể hỗ trợ bạn tốt nhất."
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except Exception as e:
+                    print(f"Lỗi khi xóa file không kèm tin nhắn: {e}")
+            return "⚠️ Vui lòng gửi lại file và nêu rõ yêu cầu (ví dụ: cần tính thuế, trích xuất giao dịch, hay tư vấn điều luật nào...) để tôi có thể hỗ trợ bạn tốt nhất."
 
         full_prompt = f"""
         Ngữ cảnh pháp lý (Cơ sở tri thức):

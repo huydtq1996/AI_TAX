@@ -1086,6 +1086,7 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.02em;
     display: inline-block;
+    white-space: nowrap;
 }
 
 .badge-green {

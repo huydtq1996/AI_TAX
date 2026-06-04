@@ -150,7 +150,7 @@ WITH CHECK (
 CREATE TABLE business_settings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL DEFAULT auth.uid(),
-    business_name TEXT NOT NULL DEFAULT 'Mimimart',
+    business_name TEXT NOT NULL DEFAULT 'My Business',
     business_category TEXT NOT NULL DEFAULT 'ban_buon_ban_le',
     declaration_type TEXT NOT NULL DEFAULT 'quy',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,

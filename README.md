@@ -4,12 +4,13 @@ Dự án được xây dựng dựa trên sơ đồ quy trình, sử dụng AI (
 
 ## Tính năng Nổi Bật
 - **Tra cứu luật thuế chính xác:** Cơ chế RAG tìm kiếm thông tin luật thuế sử dụng Supabase Vector DB (độ dài vector 768 chiều từ `gemini-embedding-2`).
-- **Tính thuế Hộ Kinh Doanh:** Tính toán tự động, chuẩn xác tuyệt đối theo các quy định mới nhất: Luật Thuế GTGT 48/2024/QH15, Luật Thuế TNCN 109/2025/QH15, và các Nghị định 141/2026/NĐ-CP, 68/2026/NĐ-CP. Hỗ trợ nhiều nhóm ngành nghề và phương pháp tính.
+- **Tính thuế Hộ Kinh Doanh:** Tính toán tự động, chuẩn xác tuyệt đối theo các quy định mới nhất: Luật Thuế GTGT 48/2024/QH15, Luật Thuế TNCN 109/2025/QH15, và các Nghị định 141/2026/NĐ-CP, 68/2026/NĐ-CP. Hỗ trợ nhiều nhóm ngành nghề và phương pháp tính. **Các thông số tỷ lệ thuế suất, bậc thuế lũy tiến và danh mục ngành nghề được quản lý tập trung tại Backend và đồng bộ động lên Frontend qua API `/api/tax-rates`.**
 - **Tư vấn thuế tự động qua Chat:** Hỗ trợ giải đáp các thắc mắc về thuế bằng mô hình ngôn ngữ lớn `gemini-2.5-flash`, kết hợp với bộ phân loại ngữ cảnh thông minh (Context Classifier).
-- **Phân tích tệp tin nâng cao:** Hỗ trợ tải lên tệp Excel, CSV, PDF hoặc hình ảnh hóa đơn/biên lai trực tiếp trong cuộc hội thoại để AI trích xuất giao dịch (Thu/Chi) và phân tích số liệu.
-- **Bảo mật dữ liệu tối đa:** Tệp tin tải lên được mã hóa tự động trên đĩa của máy chủ bằng khóa bảo mật động và lưu trữ an toàn. Dữ liệu chỉ được giải mã in-memory khi AI cần xử lý.
+- **Phân tích tệp tin nâng cao:** Hỗ trợ tải lên tệp Excel, CSV, PDF hoặc hình ảnh hóa đơn/biên lai trực tiếp trong cuộc hội thoại để AI trích xuất giao dịch (Thu/Chi) và phân tích số liệu. **Hệ thống tích hợp bộ lọc Python tự động phát hiện và cảnh báo người dùng ngay lập tức khi tải file lên mà không ghi chú yêu cầu đi kèm (giúp tiết kiệm chi phí gọi API và tuân thủ chặt chẽ luồng nghiệp vụ).**
+- **Bảo mật và Quản lý tệp tin tối ưu:** Tệp tin tải lên được mã hóa tự động trên đĩa của máy chủ bằng khóa bảo mật động. **Thông tin file tải lên được quản lý độc lập thông qua bảng `user_files`, tự động dọn dẹp sạch sẽ cả file vật lý trên đĩa và bản ghi trong CSDL khi người dùng xóa phiên chat hoặc tệp tin, tránh hoàn toàn tình trạng file mồ côi (orphaned files).**
 - **Chống Tấn Công LLM (Multi-layer WAF):** Tích hợp Guard Service để kiểm duyệt đầu vào (chống XML/Template/Prompt Injection, Tokenizer DOS) và bảo vệ đầu ra (chống rò rỉ System Prompt).
 - **Giao diện hiện đại:** Xây dựng bằng Next.js 14 với phong cách thiết kế Vanilla CSS mượt mà, tối ưu hóa giao diện người dùng theo chuẩn responsive.
+
 
 ## Đánh Giá Hệ Thống Theo 5 Trục (5-Axis Evaluation)
 
