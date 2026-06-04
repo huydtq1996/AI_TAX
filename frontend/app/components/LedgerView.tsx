@@ -353,7 +353,7 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
               <form onSubmit={handleSaveTransaction} className="ledger-inline-form">
                 <div className="dark-form-group">
                   <label>Phân loại</label>
-                  <div style={{ display: 'flex', gap: '4px', background: '#e2e8f0', padding: '3px', borderRadius: '8px', height: '40px', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: '4px', background: '#e2e8f0', padding: '3px', borderRadius: '8px', height: '44px', alignItems: 'center' }}>
                     <button
                       type="button"
                       onClick={() => setLedgerType('thu')}
@@ -426,15 +426,15 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                     value={ledgerDescription}
                     onChange={(e) => setLedgerDescription(e.target.value)}
                     required
-                    placeholder={ledgerType === 'chi' ? "Mô tả khoản chi (ví dụ: Nhập hàng tạp hóa)" : "Mô tả nguồn thu (ví dụ: Bán lẻ tạp hóa)"}
+                    placeholder={ledgerType === 'chi' ? "Mô tả khoản chi (ví dụ: Nhập thiết bị)" : "Mô tả nguồn thu (ví dụ: Bán thiết bị)"}
                   />
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
-                  <button type="submit" className="primary-button btn-green-grad" style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '0.9rem', width: '100%', height: '40px', justifyContent: 'center' }}>
+                  <button type="submit" className="primary-button btn-green-grad" style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '0.9rem', width: '100%', height: '44px', justifyContent: 'center' }}>
                     {editingTransactionId ? "Cập nhật" : "Lưu"}
                   </button>
                   {editingTransactionId && (
-                    <button type="button" className="icon-button" onClick={handleCancelEditTransaction} style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', borderRadius: '8px', height: '40px', width: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }} title="Hủy chỉnh sửa">
+                    <button type="button" className="icon-button" onClick={handleCancelEditTransaction} style={{ backgroundColor: 'rgba(255,255,255,0.1)', color: 'rgb(239, 68, 68)', borderRadius: '8px', height: '44px', width: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none' }} title="Hủy chỉnh sửa">
                       <i className="fa-solid fa-xmark"></i>
                     </button>
                   )}

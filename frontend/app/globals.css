@@ -1398,6 +1398,11 @@ body {
     align-items: flex-end;
 }
 
+.ledger-inline-form input {
+    height: 44px;
+    padding: 0 0.85rem;
+}
+
 @media (max-width: 768px) {
     .ledger-inline-form {
         grid-template-columns: 1fr;
