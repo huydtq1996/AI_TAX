@@ -736,17 +736,15 @@ export const LedgerView: React.FC<LedgerViewProps> = ({
                 type="button"
                 className="glass-btn-secondary"
                 onClick={() => { setDeleteModalOpen(false); setTransactionToDelete(null); }}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', background: 'none', color: '#64748b', fontWeight: '600' }}
               >
                 Hủy
               </button>
               <button
                 type="button"
-                className="primary-button"
+                className="glass-btn-primary delete"
                 onClick={handleConfirmDeleteTransaction}
-                style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#fff', fontWeight: '600', cursor: 'pointer' }}
               >
-                Đồng ý xóa
+                <i className="fa-solid fa-trash-can"></i> Xóa
               </button>
             </div>
           </div>

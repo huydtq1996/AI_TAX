@@ -55,6 +55,7 @@ export default function Home() {
   const [taxMethod, setTaxMethod] = useState<string>("doanh_thu");
   const [showTaxDetailModal, setShowTaxDetailModal] = useState(false);
   const [taxRates, setTaxRates] = useState<any>({});
+  const [groupedCategories, setGroupedCategories] = useState<any>({});
   const [milestones, setMilestones] = useState<any>({
     exemption: 1000000000,
     net_level_1: 3000000000,
@@ -107,6 +108,7 @@ export default function Home() {
         const data = await response.json();
         if (data && data.rates) {
           setTaxRates(data.rates || {});
+          if (data.grouped_categories) setGroupedCategories(data.grouped_categories);
           if (data.milestones) setMilestones(data.milestones);
           if (data.net_rates) setNetRates(data.net_rates);
         } else {
@@ -273,7 +275,6 @@ export default function Home() {
 
   // Lắng nghe sự thay đổi trạng thái đăng nhập
   useEffect(() => {
-    fetchTaxRates();
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
@@ -287,7 +288,8 @@ export default function Home() {
           await Promise.all([
             fetchBusinessSettings(session.access_token),
             fetchTransactions(session.access_token),
-            fetchTaxSchedulePeriods(session.access_token)
+            fetchTaxSchedulePeriods(session.access_token),
+            fetchTaxRates()
           ]);
         } catch (e) {
           console.error("Lỗi khi tải dữ liệu khởi tạo:", e);
@@ -316,7 +318,8 @@ export default function Home() {
             await Promise.all([
               fetchBusinessSettings(session.access_token),
               fetchTransactions(session.access_token),
-              fetchTaxSchedulePeriods(session.access_token)
+              fetchTaxSchedulePeriods(session.access_token),
+              fetchTaxRates()
             ]);
           } catch (e) {
             console.error("Lỗi tải dữ liệu sau thay đổi phiên đăng nhập:", e);
@@ -509,17 +512,7 @@ export default function Home() {
     }
   };
 
-  // Nhóm các ngành nghề theo từng Nhóm ngành (group)
-  const groupedCategories: { [groupName: string]: { key: string; name: string }[] } = {};
-  if (taxRates) {
-    Object.entries(taxRates).forEach(([key, info]: [string, any]) => {
-      const group = info.group || "Hoạt động kinh doanh khác";
-      if (!groupedCategories[group]) {
-        groupedCategories[group] = [];
-      }
-      groupedCategories[group].push({ key, name: info.name });
-    });
-  }
+
 
   if (!userToken || authView === 'reset_password') {
     return (
@@ -570,6 +563,7 @@ export default function Home() {
           isLoading={isLoading}
           milestones={milestones}
           netRates={netRates}
+          groupedCategories={groupedCategories}
         />
       );
     }
@@ -630,20 +624,10 @@ export default function Home() {
               Bạn có chắc chắn muốn đăng xuất khỏi tài khoản Hộ kinh doanh của mình không?
             </p>
             <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
-              <button
-                type="button"
-                className="glass-btn-secondary"
-                style={{ padding: '8px 20px', minWidth: '100px' }}
-                onClick={() => setShowSignOutConfirm(false)}
-              >
+              <button type="button" className="glass-btn-secondary" onClick={() => setShowSignOutConfirm(false)}>
                 Hủy
               </button>
-              <button
-                type="button"
-                className="glass-btn-primary"
-                style={{ padding: '8px 20px', minWidth: '100px', backgroundColor: '#ef4444', borderColor: '#ef4444' }}
-                onClick={handleSignOutConfirm}
-              >
+              <button type="button" className="glass-btn-primary delete" onClick={handleSignOutConfirm}>
                 Đăng xuất
               </button>
             </div>

@@ -58,6 +58,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [displayRevenue, setDisplayRevenue] = useState("");
   const [method, setMethod] = useState("doanh_thu");
   const [expenses, setExpenses] = useState("");
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [displayExpenses, setDisplayExpenses] = useState("");
   const [category, setCategory] = useState("hoat_dong_khac");
   const [taxData, setTaxData] = useState<TaxData | null>(null);
@@ -68,6 +69,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
   const [isFilesLoading, setIsFilesLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<any | null>(null);
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   // Refs inside ChatView
   const chatWindowRef = useRef<HTMLDivElement>(null);
@@ -81,6 +83,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   useEffect(() => {
     if (taxRates && Object.keys(taxRates).length > 0) {
       setInternalTaxRates(taxRates);
+      if (groupedCategories && Object.keys(groupedCategories).length > 0) {
+        setInternalGroupedCategories(groupedCategories);
+      }
       return;
     }
     const fetchRates = async () => {
@@ -90,6 +95,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           const data = await response.json();
           if (data && data.rates) {
             setInternalTaxRates(data.rates || {});
+            setInternalGroupedCategories(data.grouped_categories || {});
           } else {
             setInternalTaxRates(data || {});
           }
@@ -99,26 +105,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }
     };
     fetchRates();
-  }, [taxRates]);
-
-  // Compute groupedCategories internally if not provided
-  useEffect(() => {
-    if (groupedCategories && Object.keys(groupedCategories).length > 0) {
-      setInternalGroupedCategories(groupedCategories);
-      return;
-    }
-    if (internalTaxRates && Object.keys(internalTaxRates).length > 0) {
-      const grouped: { [groupName: string]: { key: string; name: string }[] } = {};
-      Object.entries(internalTaxRates).forEach(([key, info]: [string, any]) => {
-        const group = info.group || "Hoạt động sản xuất, kinh doanh khác";
-        if (!grouped[group]) {
-          grouped[group] = [];
-        }
-        grouped[group].push({ key, name: info.name });
-      });
-      setInternalGroupedCategories(grouped);
-    }
-  }, [internalTaxRates, groupedCategories]);
+  }, [taxRates, groupedCategories]);
 
   // Fallback formatVND
   const localFormatVND = formatVND || ((amount: number) => {
@@ -248,20 +235,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
   };
 
   // Xóa phiên chat thông qua backend proxy
-  const deleteSession = async (e: React.MouseEvent, sessionId: string) => {
+  const confirmDeleteSession = (e: React.MouseEvent, sessionId: string) => {
     e.stopPropagation();
-    if (!window.confirm('Bạn có chắc chắn muốn xóa cuộc trò chuyện này?')) return;
-    if (!userToken) return;
+    setSessionToDelete(sessionId);
+  };
+
+  const executeDeleteSession = async () => {
+    if (!sessionToDelete || !userToken) return;
 
     try {
-      const response = await fetch(`/api/sessions/${sessionId}?supabase_token=${userToken}`, {
+      const response = await fetch(`/api/sessions/${sessionToDelete}?supabase_token=${userToken}`, {
         method: 'DELETE'
       });
       if (response.ok) {
-        const newSessions = chatSessions.filter(s => s.id !== sessionId);
+        const newSessions = chatSessions.filter(s => s.id !== sessionToDelete);
         setChatSessions(newSessions);
 
-        if (currentSessionId === sessionId) {
+        if (currentSessionId === sessionToDelete) {
           if (newSessions.length > 0) {
             loadSession(newSessions[0].id, userToken);
           } else {
@@ -271,11 +261,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }
     } catch (err) {
       console.error("Lỗi xóa cuộc trò chuyện:", err);
+    } finally {
+      setSessionToDelete(null);
     }
   };
 
-  const handleSendMessage = async (text: string, forceRevenue = 0, forceCat = "", forceMethod = "", forceExpenses = 0) => {
-    if (!text.trim() && !selectedFile) return;
+  const handleSendMessage = async (text: string, forceRevenue = 0, forceCat = "", forceMethod = "", forceExpenses = 0, isTaxForm = false) => {
+    if (!text.trim() && !selectedFile && !isTaxForm) return;
 
     const currentFileName = selectedFile ? selectedFile.name : undefined;
     const currentFileType = selectedFile ? selectedFile.name.split('.').pop()?.toUpperCase() : undefined;
@@ -309,12 +301,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
     formData.append("category", forceCat || "hoat_dong_khac");
     formData.append("method", forceMethod || "doanh_thu");
     formData.append("expenses", forceExpenses.toString() || "0");
+    if (isTaxForm) formData.append("is_tax_form", "true");
     if (selectedFile) formData.append("file", selectedFile);
     if (userToken) formData.append("supabase_token", userToken);
     if (currentSessionId) formData.append("session_id", currentSessionId);
 
     try {
-      const response = await fetch("/api/chat", {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const response = await fetch(`${apiUrl}/api/chat`, {
         method: "POST",
         body: formData,
       });
@@ -350,14 +344,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
       } else {
         setMessages((prev) => {
           if (prev.some((m) => m.id === typingId)) {
-            return prev.map((m) =>
-              m.id === typingId
-                ? { ...m, text: data.text, isTyping: false, sources: data.sources }
-                : m
-            );
+            return prev.map((m) => {
+              if (m.id === typingId) return { ...m, text: data.text, isTyping: false, sources: data.sources };
+              if (m.id === userId && data.user_message) return { ...m, text: data.user_message };
+              return m;
+            });
           } else {
+            const next = prev.map((m) => (m.id === userId && data.user_message) ? { ...m, text: data.user_message } : m);
             return [
-              ...prev,
+              ...next,
               { id: Date.now().toString(), text: data.text, isUser: false, sources: data.sources },
             ];
           }
@@ -433,21 +428,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const onTaxSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const catText = (internalTaxRates && internalTaxRates[category]) ? internalTaxRates[category].name : category;
-    const msgParts = [
-      `**📝 Tính thuế cho tôi theo phương pháp "${method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế'}":**`,
-      `*   **Doanh thu**: ${localFormatVND(Number(revenue))}`
-    ];
-
-    if (method === 'thu_nhap') {
-      msgParts.push(`*   **Chi phí hợp lý**: ${localFormatVND(Number(expenses))}`);
-    }
-
-    msgParts.push(`*   **Ngành nghề**: ${catText}`);
-    msgParts.push(`👉 *Hãy giải thích tóm tắt bảng tính thuế này.*`);
-
-    const msg = msgParts.join('\n');
-    handleSendMessage(msg, Number(revenue), category, method, Number(expenses));
+    const msg = "Đang xử lý yêu cầu tính thuế...";
+    handleSendMessage(msg, Number(revenue), category, method, Number(expenses), true);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -507,15 +489,23 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <i className="fa-solid fa-robot"></i> AI Trợ lý Khai báo Thuế
           </h1>
         </div>
+        <button
+          className="header-toggle-sidebar-btn"
+          onClick={() => setIsRightSidebarOpen(!isRightSidebarOpen)}
+          title={isRightSidebarOpen ? "Ẩn bảng tính thuế nhanh" : "Hiện bảng tính thuế nhanh"}
+        >
+          <i className="fa-solid fa-calculator"></i>
+          {isRightSidebarOpen ? "Ẩn tính thuế" : "Tính thuế nhanh"}
+        </button>
       </header>
 
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden', width: '100%' }}>
         {/* SIDEBAR TƯƠNG TỰ GEMINI */}
         <div className="sidebar" style={{ width: '280px', backgroundColor: '#f0f4f9', padding: '15px', display: 'flex', flexDirection: 'column', borderRight: '1px solid #e0e0e0', overflowY: 'hidden' }}>
 
-          <button
+          <button className='primary-button'
             onClick={createNewSession}
-            style={{ backgroundColor: '#fff', border: 'none', borderRadius: '20px', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', fontWeight: 'bold', fontSize: '14px' }}>
+            style={{ border: 'none', borderRadius: '20px', padding: '15px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem' }}>
             <i className="fa-solid fa-plus"></i> Cuộc trò chuyện mới
           </button>
 
@@ -530,9 +520,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <i className="fa-regular fa-message" style={{ marginRight: '8px' }}></i> {session.title.replace(/[#*_`]/g, '').trim()}
                   </button>
                   <button
-                    onClick={(e) => deleteSession(e, session.id)}
+                    className='user-logout-btn'
+                    onClick={(e) => confirmDeleteSession(e, session.id)}
                     title="Xóa cuộc trò chuyện"
-                    style={{ padding: '8px', border: 'none', backgroundColor: 'transparent', color: '#888', cursor: 'pointer', borderRadius: '50%' }}>
+                    style={{ backgroundColor: 'transparent' }}>
                     <i className="fa-solid fa-trash-can"></i>
                   </button>
                 </li>
@@ -544,7 +535,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', borderTop: '1px solid #e0e0e0', paddingTop: '15px' }}>
             <button
               onClick={() => { setShowFiles(true); fetchFiles(); }}
-              style={{ width: '100%', padding: '10px 12px', border: 'none', borderRadius: '8px', backgroundColor: 'transparent', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', color: '#444', transition: 'background 0.2s' }}
+              className="sidebar-action-btn"
             >
               <i className="fa-solid fa-folder-open" style={{ fontSize: '16px', color: '#5f6368' }}></i>
               <span style={{ fontSize: '13px', fontWeight: 500 }}>Quản lý tệp tin</span>
@@ -576,7 +567,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </div>
 
-        <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
+        <main className="main-content" style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <div className="chat-section">
               <div className="chat-window" ref={chatWindowRef}>
@@ -656,7 +647,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                       backgroundColor: 'rgba(79, 70, 229, 0.08)',
                                       borderRadius: '100px',
                                       border: '1px solid rgba(79, 70, 229, 0.15)',
-                                      color: '#4f46e5',
+                                      color: 'var(--primary)',
                                       fontWeight: '500',
                                       display: 'inline-block'
                                     }}>
@@ -689,7 +680,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     style={{ display: "none" }}
                     accept=".xlsx,.xls,.csv,.pdf,image/*"
                   />
-                  <button type="button" className="icon-button file-btn" onClick={handleAttachClick} title="Đính kèm Excel/PDF/Ảnh hóa đơn">
+                  <button type="button" className="icon-button" onClick={handleAttachClick} title="Đính kèm Excel/PDF/Ảnh hóa đơn">
                     <i className="fa-solid fa-paperclip"></i>
                   </button>
 
@@ -700,159 +691,164 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     placeholder="Nhập câu hỏi hoặc gửi ảnh tờ khai/hóa đơn..."
                     autoComplete="off"
                   />
-                  <button type="submit" className="primary-button send-btn" disabled={!inputMessage.trim() && !selectedFile}>
+                  <button type="submit" className="primary-button" disabled={!inputMessage.trim() && !selectedFile}>
                     <i className="fa-solid fa-paper-plane"></i> Gửi
                   </button>
                 </form>
               </div>
             </div>
 
-            <div className="side-panel">
-              <h3>
-                <i className="fa-solid fa-calculator"></i> Tính thuế nhanh
-              </h3>
-              <form onSubmit={onTaxSubmit} className="tax-form">
-                <div className="form-group">
-                  <label>Phương pháp tính thuế:</label>
-                  <select value={method} onChange={(e) => setMethod(e.target.value)}>
-                    <option value="doanh_thu">Tính theo Doanh thu</option>
-                    <option value="thu_nhap">Tính theo Thu nhập tính thuế (DT - Chi phí)</option>
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Doanh thu năm (VNĐ):</label>
-                  <input
-                    type="text"
-                    value={displayRevenue}
-                    onChange={(e) => localHandleNumberChange(e, setRevenue, setDisplayRevenue)}
-                    onBlur={() => {
-                      if (revenue) {
-                        setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
-                      }
-                    }}
-                    onFocus={() => {
-                      if (revenue) {
-                        setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
-                      }
-                    }}
-                    placeholder="VD: 600.000.000,00"
-                    required
-                  />
-                </div>
-                {method === "thu_nhap" && (
+            {isRightSidebarOpen && (
+              <div className="side-panel" style={{ transition: 'all 0.3s ease' }}>
+                <h3>
+                  <i className="fa-solid fa-calculator"></i> Tính thuế nhanh
+                </h3>
+                <form onSubmit={onTaxSubmit} className="tax-form">
                   <div className="form-group">
-                    <label>Chi phí hợp lý (VNĐ):</label>
+                    <label>Phương pháp tính thuế:</label>
+                    <select value={method} onChange={(e) => setMethod(e.target.value)}>
+                      <option value="doanh_thu">Tính theo Doanh thu</option>
+                      <option value="thu_nhap">Tính theo Thu nhập tính thuế (DT - Chi phí)</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Doanh thu năm (VNĐ):</label>
                     <input
                       type="text"
-                      value={displayExpenses}
-                      onChange={(e) => localHandleNumberChange(e, setExpenses, setDisplayExpenses)}
+                      value={displayRevenue}
+                      onChange={(e) => localHandleNumberChange(e, setRevenue, setDisplayRevenue)}
                       onBlur={() => {
-                        if (expenses) {
-                          setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
+                        if (revenue) {
+                          setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
                         }
                       }}
                       onFocus={() => {
-                        if (expenses) {
-                          setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+                        if (revenue) {
+                          setDisplayRevenue(revenue.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
                         }
                       }}
-                      placeholder="VD: 100.000.000,00"
+                      placeholder="VD: 600.000.000,00"
                       required
                     />
                   </div>
-                )}
-                <div className="form-group">
-                  <label>Ngành nghề:</label>
-                  <select value={category} onChange={(e) => setCategory(e.target.value)}>
-                    {Object.keys(internalTaxRates).length === 0 ? (
-                      <option value={category}>Đang tải danh sách ngành nghề...</option>
-                    ) : (
-                      Object.entries(internalGroupedCategories as Record<string, any[]>).map(([groupName, items]) => (
-                        <optgroup key={groupName} label={groupName}>
-                          {items.map((item: any) => (
-                            <option key={item.key} value={item.key}>
-                              {item.name}
-                            </option>
-                          ))}
-                        </optgroup>
-                      ))
-                    )}
-                  </select>
-                </div>
-                <button type="submit" className="secondary-button">
-                  TÍNH THUẾ & TƯ VẤN
-                </button>
-              </form>
-
-              {taxData && (
-                <div className="card result-card" style={{ display: "block", marginTop: "0.5rem" }}>
-                  <h3>Kết quả Tính Thuế</h3>
-                  <div>
-                    {!taxData.is_taxable ? (
-                      <>
-                        <div className="tax-item">
-                          <span>Trạng thái:</span>
-                          <strong>Được miễn thuế</strong>
-                        </div>
-                        <div className="tax-item">
-                          <span>Lý do:</span>
-                          <span>{taxData.reason}</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="tax-item">
-                          <span>Doanh thu:</span>
-                          <strong>{localFormatVND(taxData.revenue || 0)}</strong>
-                        </div>
-                        <div className="tax-item">
-                          <span>DT tính thuế GTGT (toàn bộ):</span>
-                          <strong>{localFormatVND(taxData.taxable_revenue_gtgt || 0)}</strong>
-                        </div>
-                        {taxData.taxable_revenue_tncn !== undefined && (
-                          <div className="tax-item">
-                            <span>DT tính thuế TNCN (vượt 1 tỷ):</span>
-                            <strong>{localFormatVND(taxData.taxable_revenue_tncn || 0)}</strong>
-                          </div>
-                        )}
-                        {taxData.taxable_income !== undefined && (
-                          <div className="tax-item">
-                            <span>Thu nhập tính thuế:</span>
-                            <strong>{localFormatVND(taxData.taxable_income || 0)}</strong>
-                          </div>
-                        )}
-                        <div className="tax-item">
-                          <span>Thuế GTGT:</span>
-                          <span>{localFormatVND(taxData.tax_gtgt || 0)}</span>
-                        </div>
-                        <div className="tax-item">
-                          <span>Thuế TNCN:</span>
-                          <span>{localFormatVND(taxData.tax_tncn || 0)}</span>
-                        </div>
-                        <div className="tax-item tax-total" style={{ alignItems: "center" }}>
-                          <span style={{ fontSize: "1.05rem", fontWeight: "bold" }}>Tổng thuế phải nộp:</span>
-                          <span style={{ fontSize: "1.05rem", fontWeight: "bold", color: "#15803d" }}>{localFormatVND(taxData.total_tax || 0)}</span>
-                        </div>
-                        <div style={{
-                          marginTop: "15px",
-                          padding: "12px",
-                          backgroundColor: "#f0fdf4",
-                          border: "1px solid #bbf7d0",
-                          borderRadius: "8px",
-                          fontSize: "0.85rem",
-                          color: "#166534",
-                          lineHeight: "1.6",
-                          whiteSpace: "pre-wrap"
-                        }}>
-                          <strong><i className="fa-solid fa-circle-info"></i> Giải thích:</strong><br />
-                          {taxData.explanation}
-                        </div>
-                      </>
-                    )}
+                  {method === "thu_nhap" && (
+                    <div className="form-group">
+                      <label>Chi phí hợp lý (VNĐ):</label>
+                      <input
+                        type="text"
+                        value={displayExpenses}
+                        onChange={(e) => localHandleNumberChange(e, setExpenses, setDisplayExpenses)}
+                        onBlur={() => {
+                          if (expenses) {
+                            setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, ".") + ",00");
+                          }
+                        }}
+                        onFocus={() => {
+                          if (expenses) {
+                            setDisplayExpenses(expenses.replace(/\B(?=(\d{3})+(?!\d))/g, "."));
+                          }
+                        }}
+                        placeholder="VD: 100.000.000,00"
+                        required
+                      />
+                    </div>
+                  )}
+                  <div className="form-group">
+                    <label>Ngành nghề:</label>
+                    <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                      {Object.keys(internalTaxRates).length === 0 ? (
+                        <option value={category}>Đang tải danh sách ngành nghề...</option>
+                      ) : (
+                        Object.entries(internalGroupedCategories as Record<string, any[]>).map(([groupName, items]) => (
+                          <optgroup key={groupName} label={groupName}>
+                            {items.map((item: any) => (
+                              <option key={item.key} value={item.key}>
+                                {item.name}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))
+                      )}
+                    </select>
                   </div>
-                </div>
-              )}
-            </div>
+                  <button type="submit" className="secondary-button">
+                    TÍNH THUẾ & TƯ VẤN
+                  </button>
+                </form>
+
+                {taxData && (
+                  <div className="card result-card" style={{ display: "block", marginTop: "0.5rem" }}>
+                    <h3>Kết quả Tính Thuế</h3>
+                    <div>
+                      {!taxData.is_taxable ? (
+                        <>
+                          <div className="tax-item">
+                            <span>Trạng thái:</span>
+                            <strong>Được miễn thuế</strong>
+                          </div>
+                          <div className="tax-item">
+                            <span>Lý do:</span>
+                            <span>{taxData.reason}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="tax-item">
+                            <span>Doanh thu:</span>
+                            <strong>{localFormatVND(taxData.revenue || 0)}</strong>
+                          </div>
+                          <div className="tax-item">
+                            <span>DT tính thuế GTGT (toàn bộ):</span>
+                            <strong>{localFormatVND(taxData.taxable_revenue_gtgt || 0)}</strong>
+                          </div>
+                          {taxData.taxable_revenue_tncn !== undefined && (
+                            <div className="tax-item">
+                              <span>DT tính thuế TNCN (vượt 1 tỷ):</span>
+                              <strong>{localFormatVND(taxData.taxable_revenue_tncn || 0)}</strong>
+                            </div>
+                          )}
+                          {taxData.taxable_income !== undefined && (
+                            <div className="tax-item">
+                              <span>Thu nhập tính thuế:</span>
+                              <strong>{localFormatVND(taxData.taxable_income || 0)}</strong>
+                            </div>
+                          )}
+                          <div className="tax-item">
+                            <span>Thuế GTGT:</span>
+                            <span>{localFormatVND(taxData.tax_gtgt || 0)}</span>
+                          </div>
+                          <div className="tax-item">
+                            <span>Thuế TNCN:</span>
+                            <span>{localFormatVND(taxData.tax_tncn || 0)}</span>
+                          </div>
+                          <div className="tax-item tax-total" style={{ alignItems: "center" }}>
+                            <span style={{ fontSize: "1.05rem", fontWeight: "bold" }}>Tổng thuế phải nộp:</span>
+                            <span style={{ fontSize: "1.05rem", fontWeight: "bold", color: "#15803d" }}>{localFormatVND(taxData.total_tax || 0)}</span>
+                          </div>
+                          <div style={{
+                            marginTop: "15px",
+                            padding: "12px",
+                            backgroundColor: "#f0fdf4",
+                            border: "1px solid #bbf7d0",
+                            borderRadius: "8px",
+                            fontSize: "0.85rem",
+                            color: "#166534",
+                            lineHeight: "1.6",
+                            whiteSpace: "pre-wrap"
+                          }}>
+                            <strong><i className="fa-solid fa-circle-info"></i> Giải thích:</strong><br />
+                            {taxData.explanation}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+
+
           </div>
         </main>
       </div>
@@ -861,11 +857,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
       {showFiles && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
           <div style={{ backgroundColor: 'white', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }}>
-            <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div className="glass-modal-header" style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem', color: '#1a1a1a' }}>
                 <i className="fa-solid fa-folder-open" style={{ color: '#5f6368' }}></i> Danh sách tệp đã tải lên
               </h3>
-              <button onClick={() => setShowFiles(false)} style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer', color: '#888' }}>
+              <button className="glass-modal-close-btn" onClick={() => setShowFiles(false)}>
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
@@ -908,11 +904,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         <div style={{ fontSize: '12px', color: '#888' }}>{(file.size / 1024).toFixed(1)} KB • {new Date(file.ctime * 1000).toLocaleDateString('vi-VN')}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <button onClick={() => handleDownload(file.name)} title="Tải xuống" style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', backgroundColor: '#e8f0fe', color: '#1a73e8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <button onClick={() => handleDownload(file.name)} title="Tải xuống" className='ledger-action-btn btn-edit'>
                           <i className="fa-solid fa-download"></i>
                         </button>
-                        <button onClick={() => setFileToDelete(file)} title="Xóa" style={{ width: '36px', height: '36px', border: 'none', borderRadius: '8px', backgroundColor: '#fce8e6', color: '#d93025', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <i className="fa-solid fa-trash"></i>
+                        <button onClick={() => setFileToDelete(file)} title="Xóa" className='ledger-action-btn btn-delete'>
+                          <i className="fa-solid fa-trash-can"></i>
                         </button>
                       </div>
                     </div>
@@ -955,26 +951,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
             </div>
             <div className="glass-modal-footer" style={{ justifyContent: 'flex-end', gap: '8px', padding: '12px 20px' }}>
-              <button
-                type="button"
-                className="glass-btn-secondary"
-                onClick={() => setFileToDelete(null)}
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', background: 'none', color: '#64748b', fontWeight: '600' }}
-              >
-                Hủy
-              </button>
-              <button
-                type="button"
-                className="primary-button"
+              <button type="button" className="glass-btn-secondary" onClick={() => setFileToDelete(null)}>Hủy</button>
+              <button type="button" className="glass-btn-primary delete"
                 onClick={async () => {
                   const filename = fileToDelete.name;
                   setFileToDelete(null);
                   await handleDeleteFile(filename);
-                }}
-                style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: '#ef4444', color: '#fff', fontWeight: '600', cursor: 'pointer' }}
-              >
-                Đồng ý xóa
+                }}>
+                <i className="fa-solid fa-trash-can"></i> Xóa
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal xác nhận xóa cuộc trò chuyện */}
+      {sessionToDelete && (
+        <div className="glass-modal-overlay" style={{ zIndex: 1010 }}>
+          <div className="glass-modal-card" style={{ maxWidth: '450px' }}>
+            <div className="glass-modal-header" style={{ borderBottom: '1px solid #fee2e2' }}>
+              <h3 style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}><i className="fa-solid fa-triangle-exclamation"></i> Xác nhận xóa cuộc trò chuyện</h3>
+              <button className="glass-modal-close-btn" onClick={() => setSessionToDelete(null)}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="glass-modal-body" style={{ padding: '20px', color: '#1e293b' }}>
+              <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: '500' }}>Bạn có chắc chắn muốn xóa cuộc trò chuyện này không? Hành động này không thể hoàn tác.</p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" className="glass-btn-secondary" onClick={() => setSessionToDelete(null)}>Hủy</button>
+                <button type="button" className="glass-btn-primary delete" onClick={executeDeleteSession}>
+                  <i className="fa-solid fa-trash-can"></i> Xóa
+                </button>
+              </div>
             </div>
           </div>
         </div>

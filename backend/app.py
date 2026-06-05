@@ -102,6 +102,7 @@ def get_tax_rates():
         }
     
     rates_data = {}
+    grouped_categories = {}
     for cat, r in rates.items():
         info = display_info.get(cat, {"name": cat, "group": "Hoạt động kinh doanh khác"})
         rates_data[cat] = {
@@ -112,14 +113,20 @@ def get_tax_rates():
             "total": r.get("gtgt", 0) + r.get("tncn", 0)
         }
         
+        group = info["group"]
+        if group not in grouped_categories:
+            grouped_categories[group] = []
+        grouped_categories[group].append({"key": cat, "name": info["name"]})
+        
     return jsonify({
         "rates": rates_data,
+        "grouped_categories": grouped_categories,
         "milestones": tax_calculator.revenue_milestones,
         "net_rates": tax_calculator.tncn_rates_net
     })
 
 @app.route('/api/chat', methods=['POST'])
-@limit_requests(15, 60)
+@limit_requests(30, 60)
 def chat():
     # Nhận dữ liệu dạng Form Data (Hỗ trợ File)
     user_message = request.form.get('message', '')
@@ -131,6 +138,35 @@ def chat():
     session_id = request.form.get('session_id')
     
     file = request.files.get('file')
+    is_tax_form = request.form.get('is_tax_form') == 'true'
+    method = request.form.get('method', 'doanh_thu')
+    expenses_str = request.form.get('expenses', '0')
+    expenses = float(expenses_str) if expenses_str else 0
+    
+    if is_tax_form and revenue > 0:
+        # Tự động tạo user_message từ backend để tránh trùng lặp logic bên frontend
+        rates_data = tax_calculator.tax_rates
+        meta = tax_calculator.category_metadata.get(category, {"name": category})
+        cat_text = meta.get("name", category)
+        
+        method_text = "Doanh thu" if method == "doanh_thu" else "Thu nhập tính thuế"
+        
+        # Định dạng tiền tệ
+        def format_vnd(amount):
+            return f"{amount:,.0f} VNĐ".replace(",", ".")
+            
+        msg_parts = [
+            f'**📝 Tính thuế cho tôi theo phương pháp "{method_text}":**',
+            f'*   **Doanh thu**: {format_vnd(revenue)}'
+        ]
+        
+        if method == 'thu_nhap':
+            msg_parts.append(f'*   **Chi phí hợp lý**: {format_vnd(expenses)}')
+            
+        msg_parts.append(f'*   **Ngành nghề**: {cat_text}')
+        msg_parts.append(f'👉 *Hãy giải thích tóm tắt bảng tính thuế này.*')
+        
+        user_message = "\n".join(msg_parts)
     
     if file:
         file.seek(0, os.SEEK_END)
@@ -163,9 +199,9 @@ def chat():
         if user_message:
             import re
             clean_title = re.sub(r'[#\*_\`\-]', '', user_message).strip()
-            title = clean_title[:40] + "..." if clean_title else "Kế hoạch Thuế"
+            title = clean_title[:40] + "..." if clean_title else "Kế hoạch đóng Thuế"
         else:
-            title = "Kế hoạch Thuế"
+            title = "Kế hoạch đóng Thuế"
         session_id = supabase_service.create_session(title, user_token)
         
     # 2. Xử lý File Upload
@@ -192,7 +228,13 @@ def chat():
     # 2. RAG - Lấy ngữ cảnh luật thuế
     legal_context = ""
     sources = []
-    if is_relevant and guard_service.needs_rag(user_message):
+    if is_relevant:
+        needs_rag_flag, block_reason = guard_service.needs_rag(user_message)
+        if not needs_rag_flag:
+            return jsonify({
+                "error": f"Tin nhắn bị từ chối: {block_reason}"
+            }), 403
+            
         # Chuyển đổi câu hỏi của user thành Vector
         query_vector = gemini_service.embed_text(user_message)
         legal_context, sources = supabase_service.search_tax_laws(query_vector)
@@ -200,10 +242,6 @@ def chat():
     # 3. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
     tax_result = None
     if revenue > 0:
-        method = request.form.get('method', 'doanh_thu')
-        expenses_str = request.form.get('expenses', '0')
-        expenses = float(expenses_str) if expenses_str else 0
-        
         tax_result = tax_calculator.calculate_tax(float(revenue), category, method, expenses)
         legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
         
@@ -237,7 +275,8 @@ def chat():
         "text": ai_response,
         "tax_table": tax_result,
         "session_id": session_id,
-        "sources": sources
+        "sources": sources,
+        "user_message": user_message
     }
     
     return jsonify(response)

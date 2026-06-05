@@ -26,6 +26,7 @@ type DashboardViewProps = {
   isLoading?: boolean;
   milestones?: any;
   netRates?: any;
+  groupedCategories?: Record<string, { key: string; name: string }[]>;
 };
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -61,20 +62,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     level_1: 0.15,
     level_2: 0.17,
     level_3: 0.20
-  }
+  },
+  groupedCategories = {}
 }) => {
-  // Nhóm các ngành nghề theo từng Nhóm ngành (group)
-  const groupedCategories: { [groupName: string]: { key: string; name: string }[] } = {};
-  if (taxRates) {
-    Object.entries(taxRates).forEach(([key, info]: [string, any]) => {
-      const group = info.group || "Hoạt động sản xuất, kinh doanh khác";
-      if (!groupedCategories[group]) {
-        groupedCategories[group] = [];
-      }
-      groupedCategories[group].push({ key, name: info.name });
-    });
-  }
-
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
 

@@ -75,8 +75,11 @@ class GuardService:
         lower_input = user_input.lower()
 
         # Lớp 3: Quét từ khóa thao túng tâm lý AI (Jailbreak / Leakage)
+        # Loại bỏ toàn bộ khoảng trắng và ký tự đặc biệt để chống các kỹ thuật lách luật như q-u-ê-n đ-i hoặc Hệ_thống_prompt
+        clean_lower_input = re.sub(r'\W+', '', lower_input).replace('_', '')
         for keyword in self.forbidden_keywords:
-            if keyword in lower_input:
+            stripped_kw = re.sub(r'\W+', '', keyword.lower()).replace('_', '')
+            if stripped_kw in clean_lower_input:
                 reason = f"Phát hiện từ khóa cấm '{keyword}'"
                 print(f"[Guard] BỊ CHẶN: {reason}")
                 return False, reason
@@ -110,20 +113,20 @@ class GuardService:
         # Mặc định cho phép đi tiếp, AI chính sẽ tự từ chối nếu không liên quan đến thuế
         return "RELEVANT"
 
-    def needs_rag(self, user_input: str) -> bool:
+    def needs_rag(self, user_input: str) -> tuple[bool, str]:
         """
         BƯỚC 4: Xác định xem câu hỏi có thực sự cần tra cứu RAG (Luật Thuế/Kế toán) hay không.
         Sử dụng cơ chế tính điểm (Scoring) thay vì chỉ chặn từ khóa.
         Chỉ chạy khi check_relevance trả về "RELEVANT".
         """
         if not user_input or not user_input.strip():
-            return False
+            return False, "Câu hỏi trống"
             
         clean_input = user_input.strip().lower()
         
-        # 1. Bỏ qua RAG nếu câu quá ngắn và vô nghĩa (dưới 4 ký tự)
-        if len(clean_input) < 4:
-            return False
+        # 1. Bỏ qua RAG nếu câu quá ngắn và vô nghĩa (dưới 10 ký tự)
+        if len(clean_input) < 10:
+            return False, "Câu hỏi quá ngắn"
             
         # 2. HỆ THỐNG TÍNH ĐIỂM (Scoring System)
         # Một câu hỏi phải đạt đủ điểm "chuyên môn" mới được phép vào RAG
@@ -157,11 +160,13 @@ class GuardService:
                 score += 1
                 
         # 3. Phán quyết
-        # Chỉ gọi RAG nếu câu hỏi có ít nhất 1 từ khóa cốt lõi (has_core là True)
-        if has_core:
-            return True
-            
-        return False
+        # Chỉ gọi RAG nếu câu hỏi có ít nhất 1 từ khóa cốt lõi và 1 từ khóa ngữ cảnh (has_core là True)
+        if has_core and score >= 3:
+            return True, ""
+        else:
+            reason = "Câu hỏi không liên quan đến thuế"
+            print(f"[Guard] BỊ CHẶN: {reason}")
+            return False, reason
 
     # ==========================================
     # QUY TRÌNH KIỂM TRA ĐẦU RA (OUTPUT PIPELINE)

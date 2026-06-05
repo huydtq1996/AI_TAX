@@ -130,8 +130,9 @@ export const TaxScheduleView: React.FC<TaxScheduleViewProps> = ({
               </strong>
             </div>
             <button
+              className='secondary-button'
               onClick={() => { setViewMode('dashboard'); setShowSettingsModal(true); }}
-              style={{ background: 'rgba(79, 70, 229, 0.1)', color: '#4f46e5', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '600', cursor: 'pointer' }}
+              style={{ width: 'auto', margin: 'auto 0', padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px', minHeight: 'auto', height: '30px' }}
             >
               Thay đổi hình thức
             </button>
@@ -182,7 +183,7 @@ export const TaxScheduleView: React.FC<TaxScheduleViewProps> = ({
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <button
-                          className="primary-button btn-purple-grad"
+                          className="primary-button"
                           style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px', minHeight: 'auto', height: '30px' }}
                           onClick={() => handleOpenPaymentModal(period)}
                         >
