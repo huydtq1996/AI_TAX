@@ -86,15 +86,18 @@ body {
     flex-direction: column;
     border-right: 1px solid var(--border-color);
     background: rgba(248, 250, 252, 0.5);
+    min-width: 0;
 }
 
 .chat-window {
     flex: 1;
     padding: 1.5rem;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-width: 0;
 }
 
 .message {
@@ -102,10 +105,12 @@ body {
     gap: 1rem;
     max-width: 85%;
     animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 0;
 }
 
 .ai-message {
-    max-width: 95%; /* Increase width for AI messages to fit tables better */
+    max-width: 95%;
+    /* Increase width for AI messages to fit tables better */
 }
 
 @keyframes slideUp {
@@ -217,6 +222,8 @@ body {
     line-height: 1.6;
     border: 1px solid var(--glass-border);
     transition: transform 0.2s, background-color 0.3s, box-shadow 0.3s, padding 0.2s;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .message-bubble:hover {
@@ -538,12 +545,12 @@ body {
 
 /* Beautiful responsive tables */
 .formatted-content .table-container {
-    width: 100%;
+    max-width: min-content;
+    max-height: 500px;
     overflow-x: auto;
     overflow-y: auto;
-    max-height: 450px; /* Limit height and make it scrollable */
     margin: 1.25rem 0;
-    border-radius: 8px; /* Slightly sharper corners */
+    border-radius: 8px;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
     border: 1px solid rgba(226, 232, 240, 0.8);
     background-color: white;
@@ -551,33 +558,35 @@ body {
 }
 
 .formatted-content table {
-    width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     text-align: left;
-    min-width: 600px; /* Slightly wider to prevent excessive text wrapping */
+    min-width: max-content;
 }
 
 .formatted-content th {
     position: sticky;
     top: 0;
     z-index: 10;
-    background-color: #f1f5f9; /* Solid background for sticky header */
+    background-color: var(--bg-color);
     color: var(--primary);
     font-weight: 600;
     padding: 12px 14px;
     font-size: 0.85rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border-bottom: 2px solid rgba(226, 232, 240, 1);
+    text-align: center;
+    border-bottom: 2px solid var(--border-color);
+    min-width: 100px;
 }
 
 .formatted-content td {
-    padding: 10px 14px; /* Slightly smaller padding */
-    border-bottom: 1px solid rgba(226, 232, 240, 0.5);
-    font-size: 0.85rem; /* Smaller font for dense info */
-    color: #334155;
-    vertical-align: top; /* Align to top for long text cells */
+    min-width: 100px;
+    max-width: 250px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+    color: var(--text-main);
+    vertical-align: top;
     line-height: 1.5;
 }
 
