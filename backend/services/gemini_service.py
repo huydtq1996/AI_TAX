@@ -77,16 +77,10 @@ class GeminiService:
                     print(f"Lỗi khi xóa file không kèm tin nhắn: {e}")
             return "⚠️ Vui lòng gửi lại file và nêu rõ yêu cầu (ví dụ: cần tính thuế, trích xuất giao dịch, hay tư vấn điều luật nào...) để tôi có thể hỗ trợ bạn tốt nhất."
 
-        full_prompt = f"""
-        Ngữ cảnh pháp lý (Cơ sở tri thức):
-        {context}
-        
+        # 1. TÁCH RIÊNG SYSTEM INSTRUCTION
+        system_rules = """
         Bạn là một chuyên gia tư vấn thuế tại Việt Nam. Hãy trả lời câu hỏi của người dùng nằm bên trong thẻ <user_input> dưới đây theo các nguyên tắc nghiêm ngặt sau:
-        
-        <user_input>
-        {safe_prompt}
-        </user_input>
-        
+
         CÁC NGUYÊN TẮC BẮT BUỘC:
         0. Nếu câu hỏi không liên quan đến luật/nghị định/thông tư về thuế (ngoại trừ các câu chào hỏi xã giao hoặc cảm ơn thông thường), hãy từ chối lịch sự: "Xin lỗi, tôi không thể trả lời!".
         1. Tuyệt đối KHÔNG tự suy diễn hoặc bịa đặt nội dung ngoài những gì được cung cấp. Chỉ trả lời dựa trên 'Ngữ cảnh pháp lý', các số liệu tính toán sơ bộ (nếu có) và file đính kèm của người dùng.
@@ -99,6 +93,16 @@ class GeminiService:
         8. Trình bày câu trả lời chuyên nghiệp, rành mạch bằng định dạng Markdown. BẮT BUỘC sử dụng Bảng (Table) Markdown để so sánh hoặc trình bày số liệu.
         9. ĐẶC BIỆT: Nếu trong ngữ cảnh có cung cấp "Kết quả tính thuế sơ bộ" (do hệ thống tự tính), bạn BẮT BUỘC phải sử dụng nó để giải thích ý nghĩa của các con số một cách ngắn gọn, súc tích (khoảng 3-4 câu). Không tự tính lại hoặc giải thích công thức dài dòng.
         10. LỌC ĐỐI TƯỢNG (QUAN TRỌNG): Nếu một đoạn luật trong ngữ cảnh đề cập đến cả "doanh nghiệp" và "hộ kinh doanh/cá nhân kinh doanh", bạn CHỈ ĐƯỢC PHÉP trích xuất và tư vấn phần nội dung áp dụng cho "hộ kinh doanh/cá nhân kinh doanh". Bỏ qua các quy định dành riêng cho doanh nghiệp để tránh làm người dùng nhầm lẫn.
+        """
+
+        # 2. FULL_PROMPT BÂY GIỜ CHỈ CHỨA DỮ LIỆU VÀ CÂU HỎI
+        full_prompt = f"""
+        Ngữ cảnh pháp lý (Cơ sở tri thức):
+        {context}
+        
+        <user_input>
+        {safe_prompt}
+        </user_input>
         """
 
         for attempt in range(3):
@@ -133,6 +137,7 @@ class GeminiService:
                 contents.append(full_prompt)
                 
                 config = types.GenerateContentConfig(
+                    system_instruction=system_rules,
                     temperature=0.0,
                     tools=[calculate_tax_tool] if not has_tax_result else None
                 )
