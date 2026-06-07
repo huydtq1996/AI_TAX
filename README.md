@@ -1,107 +1,92 @@
-# AI Trợ lý Khai báo Thuế & Quản lý Kế hoạch
+# 🚀 Tax_AI Trust Blueprint
+**Trợ lý AI tin cậy cho 5,1 triệu hộ kinh doanh Việt Nam**
 
-Dự án được xây dựng dựa trên sơ đồ quy trình, sử dụng AI (Gemini 2.5 Flash, Gemini Embedding 2) và RAG (Retrieval-Augmented Generation), kết hợp với công thức tính thuế cứng để đảm bảo tính minh bạch, công bằng và đáng tin cậy cho Hộ kinh doanh.
+Tax_AI Trust Blueprint là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch tài chính dành riêng cho hộ kinh doanh cá thể. Dự án kết hợp sức mạnh của LLM (Gemini 2.5 Flash) và cơ chế RAG (Retrieval-Augmented Generation) để đảm bảo tính chính xác về pháp lý và bảo mật dữ liệu tuyệt đối.
 
-## Tính năng Nổi Bật
-- **Tra cứu luật thuế chính xác:** Cơ chế RAG tìm kiếm thông tin luật thuế sử dụng Supabase Vector DB (độ dài vector 768 chiều từ `gemini-embedding-2`).
-- **Tính thuế Hộ Kinh Doanh:** Tính toán tự động, chuẩn xác tuyệt đối theo các quy định mới nhất: Luật Thuế GTGT 48/2024/QH15, Luật Thuế TNCN 109/2025/QH15, và các Nghị định 141/2026/NĐ-CP, 68/2026/NĐ-CP. Hỗ trợ nhiều nhóm ngành nghề và phương pháp tính. **Các thông số tỷ lệ thuế suất, bậc thuế lũy tiến và danh mục ngành nghề được quản lý tập trung tại Backend và đồng bộ động lên Frontend qua API `/api/tax-rates`.**
-- **Tư vấn thuế tự động qua Chat:** Hỗ trợ giải đáp các thắc mắc về thuế bằng mô hình ngôn ngữ lớn `gemini-2.5-flash`, kết hợp với bộ phân loại ngữ cảnh thông minh (Context Classifier).
-- **Phân tích tệp tin nâng cao:** Hỗ trợ tải lên tệp Excel, CSV, PDF hoặc hình ảnh hóa đơn/biên lai trực tiếp trong cuộc hội thoại để AI trích xuất giao dịch (Thu/Chi) và phân tích số liệu. **Hệ thống tích hợp bộ lọc Python tự động phát hiện và cảnh báo người dùng ngay lập tức khi tải file lên mà không ghi chú yêu cầu đi kèm (giúp tiết kiệm chi phí gọi API và tuân thủ chặt chẽ luồng nghiệp vụ).**
-- **Bảo mật và Quản lý tệp tin tối ưu:** Tệp tin tải lên được mã hóa tự động trên đĩa của máy chủ bằng khóa bảo mật động. **Thông tin file tải lên được quản lý độc lập thông qua bảng `user_files`, tự động dọn dẹp sạch sẽ cả file vật lý trên đĩa và bản ghi trong CSDL khi người dùng xóa phiên chat hoặc tệp tin, tránh hoàn toàn tình trạng file mồ côi (orphaned files).**
-- **Chống Tấn Công LLM (Multi-layer WAF):** Tích hợp Guard Service để kiểm duyệt đầu vào (chống XML/Template/Prompt Injection, Tokenizer DOS) và bảo vệ đầu ra (chống rò rỉ System Prompt).
-- **Giao diện hiện đại:** Xây dựng bằng Next.js 14 với phong cách thiết kế Vanilla CSS mượt mà, tối ưu hóa giao diện người dùng theo chuẩn responsive.
+> *"AI tốt không chỉ là AI chính xác — mà là AI mà con người có thể tin tưởng, hiểu được và kiểm soát được."*
+> 
+> — **Nhóm G12**
 
+---
 
-## Đánh Giá Hệ Thống Theo 5 Trục (5-Axis Evaluation)
+## ✨ Tính năng cốt lõi (Beyond Accuracy)
 
-Dự án được thiết kế và xây dựng dựa trên 5 tiêu chuẩn khắt khe dành cho AI trong lĩnh vực tài chính/pháp lý:
+- 📚 **Tra cứu Luật Thuế Chính xác:** Sử dụng RAG với cơ sở dữ liệu từ Thông tư 40/2021/TT-BTC và mới nhất là Nghị định 141/2026/NĐ-CP (ngưỡng miễn thuế 1 tỷ VNĐ).
+- 🧮 **Tính thuế Deterministic:** Thuế suất được lập trình cứng (hard-coded) để loại bỏ hoàn toàn hiện tượng "ảo giác" toán học của AI, đảm bảo chính xác 100% về con số.
+- 🛡️ **Bảo mật Đa lớp (GuardService):** Tích hợp WAF riêng cho LLM để chặn 100% các cuộc tấn công Prompt Injection, Jailbreak và rò rỉ dữ liệu.
+- 🔒 **Mã hóa Dữ liệu Nhạy cảm:** Toàn bộ hóa đơn tải lên được mã hóa đối xứng bằng Fernet AES-128. Dữ liệu chỉ được giải mã trong bộ nhớ RAM và xóa sạch sau khi xử lý.
+- 🖼️ **Phân tích Đa phương thức:** Hỗ trợ đọc hiểu hóa đơn qua ảnh chụp, PDF, Excel và CSV nhờ khả năng multimodal của Gemini.
 
-1. **Reliability (Tính Đáng Tin Cậy)**
-   - Sử dụng phương pháp **Hybrid**: Kết hợp AI (đọc hiểu, trích xuất) với **Toán học tất định (Deterministic Logic)** thông qua class `TaxCalculator` được hardcode công thức thuế. Hạn chế hoàn toàn việc giao LLM tự làm toán để tránh "ảo giác" (hallucination).
-   - Cơ chế RAG thông minh (Scoring system) chỉ kích hoạt khi câu hỏi đạt đủ "trọng số chuyên môn", kết hợp với Exponential Backoff tự động retry khi API quá tải.
+---
 
-2. **Bias (Giảm Thiểu Định Kiến)**
-   - Công thức thuế khách quan, không phân biệt quy mô doanh nghiệp.
-   - System Prompt khóa chặt AI vào luật lệ Việt Nam, ngăn LLM mang định kiến từ tập dữ liệu huấn luyện quốc tế vào việc tư vấn.
-   - Khi người dùng thiếu thông tin ngành nghề, AI sẽ tự động chọn "Hoạt động kinh doanh khác" nhưng **bắt buộc minh bạch** báo cho người dùng biết về sự giả định này.
+## 🛠️ Công nghệ sử dụng (Tech Stack)
 
-3. **Robustness (Tính Vững Chắc & Kháng Lỗi)**
-   - **Bảo vệ nhiều lớp (Guard Service):** Sanitization thẻ XML, chặn câu hỏi quá nhiều ký tự đặc biệt (chống tấn công DOS tokenizer), danh sách đen từ khóa Jailbreak (như "ignore previous", "dan"), và Regex chặn mã độc.
-   - **Mã hóa đầu cuối:** Bảo vệ file nhạy cảm (hóa đơn, chứng từ) của người dùng bằng cách mã hóa ngay khi lưu xuống đĩa.
-   - **Data Leakage Prevention:** Ngăn chặn AI vô tình làm lộ chỉ thị hệ thống (system prompt) ở đầu ra.
+| Thành phần | Công nghệ |
+| :--- | :--- |
+| **Frontend** | Next.js 14.2 (TypeScript), Vanilla CSS |
+| **Backend** | Flask 3.1 (Python 3.10) |
+| **LLM Engine** | Gemini 2.5 Flash |
+| **Vector DB** | Supabase (PostgreSQL + pgvector) |
+| **Embedding** | Gemini-Embedding-2 (768 dimensions) |
 
-4. **Social Impact (Tác Động Xã Hội Tích Cực)**
-   - **Dân chủ hóa pháp lý:** Giúp các hộ kinh doanh cá thể, tiểu thương dễ dàng tiếp cận và hiểu các nghị định thuế phức tạp mà không cần tốn chi phí thuê chuyên gia tư vấn.
-   - **Thúc đẩy tính tuân thủ:** Giúp người dân tự giác khai báo và nộp thuế đúng pháp luật, đóng góp vào ngân sách nhà nước.
+---
 
-5. **Explainability (Tính Có Thể Giải Thích)**
-   - Kết quả tính thuế luôn đi kèm phần giải thích chi tiết bằng ngôn ngữ tự nhiên: Tại sao ra số tiền này? Áp dụng trên phần doanh thu nào?
-   - Yêu cầu AI **luôn trích dẫn rõ nguồn luật** (Tên Luật/Nghị định, Điều, Khoản) ở cuối câu trả lời để người dùng có thể tự đối chiếu và kiểm chứng với cơ quan thuế.
+## 🏗️ Cấu trúc dự án
 
-## Cấu trúc Dự án
-```
+```text
 AI_TAX/
-├── backend/              # Python Flask API
-│   ├── app.py            # Server chính
-│   ├── services/         # Logic xử lý (Gemini, Supabase, Tax)
-│   └── requirements.txt  # Dependencies của Python
-├── frontend/             # Next.js Application
-│   ├── app/              # Trang và Components
-│   ├── public/           # Assets tĩnh
-│   └── package.json      # Dependencies của Node.js
-├── documents/            # Tài liệu luật thuế (PDF)
-├── uploads/              # Thư mục chứa dữ liệu do người dùng tải lên
-└── README.md             # Hướng dẫn này
+├── backend/            # Flask API & Business Logic (GuardService, TaxCalculator)
+├── frontend/           # Giao diện người dùng Next.js
+├── documents/          # Thư viện văn bản pháp luật (PDF/Markdown) cho RAG
+└── uploads/            # Thư mục lưu trữ hóa đơn tạm thời (đã mã hóa)
 ```
 
-## Hướng dẫn cài đặt và chạy thử nghiệm
-### Yêu cầu cài đặt trước
-- Node.js (24.15.0)
-- Python (3.14.4)
-- Ngrok
+---
 
-### 1. Chạy Backend (Python Flask)
-1. Mở Terminal và di chuyển vào thư mục backend:
-   ```cmd
-   cd backend
-   ```
-2. Cài đặt các thư viện cần thiết:
-   ```cmd
-   pip install -r requirements.txt
-   ```
-3. Tạo file `.env` từ `.env.example` và điền các khóa API cần thiết:
-   - `GEMINI_API_KEY`: API key của Google AI Studio.
-   - `SUPABASE_URL` & `SUPABASE_SERVICE_ROLE_KEY`: Cấu hình kết nối Supabase.
-   - `ENCRYPTION_KEY`: Khóa mã hóa tệp tin.
-4. Chạy server Flask (mặc định chạy tại cổng 5000):
-   ```cmd
-   python app.py
-   ```
-   *Lưu ý: Backend chỉ cần chạy nội bộ (localhost:5000).*
+## 💻 Hướng dẫn cài đặt
 
-### 2. Chạy Frontend (Next.js)
-1. Mở một Terminal mới và di chuyển vào thư mục frontend:
-   ```cmd
-   cd frontend
-   ```
-2. Cài đặt các gói phụ thuộc (dependencies):
-   ```cmd
-   npm install
-   ```
-3. Chạy chế độ phát triển (mặc định tại cổng 3000):
-   ```cmd
-   npm run dev
-   ```
+### 1. Yêu cầu hệ thống
+- **Node.js:** Phiên bản 24.x hoặc mới hơn.
+- **Python:** Phiên bản 3.14 (Để đảm bảo tính ổn định của các thư viện mã hóa).
 
-### 3. Cấu hình Proxy và chạy thử nghiệm an toàn bằng Ngrok
-Hệ thống sử dụng Next.js Reverse Proxy để chuyển hướng mọi yêu cầu `/api/*` từ Frontend tự động sang Flask Backend ở cổng `5000`. Điều này cho phép bạn chia sẻ ứng dụng qua Ngrok mà chỉ cần công khai cổng `3000`:
+### 2. Triển khai Backend
+```bash
+cd backend
+pip install -r requirements.txt
 
-1. Khởi chạy Ngrok trỏ tới cổng Next.js:
-   ```cmd
-   ngrok http 3000
-   ```
-2. Khi chia sẻ đường dẫn HTTPS từ Ngrok (ví dụ: `https://xxxx.ngrok-free.dev`), Next.js đã được cấu hình tự động cho phép kết nối chéo qua cấu hình `allowedDevOrigins` trong `next.config.mjs` nhằm đảm bảo tính năng Hot Reload và WebSocket hoạt động trơn tru.
+# Tạo file .env và cấu hình: GEMINI_API_KEY, SUPABASE_URL, ENCRYPTION_KEY
+python app.py
+```
 
-## Lưu ý về Bảo mật
-- Tuyệt đối không commit file `.env` của backend hoặc `.env.local` lên GitHub.
-- Các API Keys và khóa mã hóa cần được lưu trữ an toàn trong các biến môi trường của môi trường deploy thực tế.
+### 3. Triển khai Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+> **Lưu ý:** Hệ thống đã cấu hình Reverse Proxy tự động chuyển hướng các yêu cầu `/api/*` sang cổng 5000.
+
+---
+
+## ⚖️ Cam kết AI có trách nhiệm (Responsible AI)
+
+Hệ thống được thiết kế dựa trên 5 trụ cột đạo đức:
+
+1. **Reliability:** Khả năng tự phục hồi với cơ chế Retry logic và tính toán tất định.
+2. **Bias Control:** Thuật toán tính thuế trung lập, không phân biệt vùng miền, giới tính.
+3. **Robustness:** Kháng lỗi mạnh mẽ với lớp bảo vệ GuardService.
+4. **Explainability:** Mọi câu trả lời đều có trích dẫn Điều/Khoản/Điểm từ nguồn luật chính thống.
+5. **Privacy:** Mã hóa dữ liệu ngay khi nhận và không lưu trữ dữ liệu thô.
+
+---
+
+## 👥 Đội ngũ thực hiện (Nhóm G12)
+
+- Nguyễn Thái Tú
+- Đỗ Quốc Thắng
+- Quách Văn Ngọc
+- Dương Trần Quang Huy
+
+**Giảng viên hướng dẫn:** Phan Thế Duy
+
+*Dự án thuộc khuôn khổ môn học: AI002.F21.CN1.TTNT – Tư Duy Trí Tuệ Nhân Tạo.*

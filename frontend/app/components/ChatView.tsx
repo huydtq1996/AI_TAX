@@ -428,7 +428,35 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const onTaxSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const msg = "Đang xử lý yêu cầu tính thuế...";
+    
+    const methodText = method === 'khoan' ? 'Khoán' : 'Kê khai (Thu nhập tính thuế)';
+    
+    let catText = category;
+    if (internalGroupedCategories && Object.keys(internalGroupedCategories).length > 0) {
+      for (const group of Object.values(internalGroupedCategories as Record<string, any[]>)) {
+        const found = group.find((item: any) => item.key === category);
+        if (found) {
+          catText = found.name;
+          break;
+        }
+      }
+    } else if (internalTaxRates && internalTaxRates[category]) {
+      catText = internalTaxRates[category].name || category;
+    }
+
+    const msgParts = [
+      `**📝 Tính thuế cho tôi theo phương pháp "${methodText}":**`,
+      `*   **Doanh thu**: ${localFormatVND(Number(revenue))}`
+    ];
+    
+    if (method === 'thu_nhap') {
+      msgParts.push(`*   **Chi phí hợp lý**: ${localFormatVND(Number(expenses))}`);
+    }
+    
+    msgParts.push(`*   **Ngành nghề**: ${catText}`);
+    msgParts.push(`👉 *Hãy giải thích tóm tắt bảng tính thuế này.*`);
+    
+    const msg = msgParts.join('\n');
     handleSendMessage(msg, Number(revenue), category, method, Number(expenses), true);
   };
 
