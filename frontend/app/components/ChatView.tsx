@@ -35,6 +35,12 @@ type ChatViewProps = {
   handleSignOut: () => void;
 };
 
+const DEFAULT_GREETING: Message = {
+  id: "init",
+  text: "Xin chào! Tôi là AI Trợ lý Thuế. Hãy cung cấp doanh thu và ngành nghề, hoặc đính kèm ảnh tờ khai/hóa đơn để tôi tư vấn.",
+  isUser: false,
+};
+
 export const ChatView: React.FC<ChatViewProps> = ({
   userToken,
   userEmail,
@@ -46,13 +52,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   handleSignOut
 }) => {
   // Chat-specific state variables
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "init",
-      text: "Xin chào! Tôi là AI Trợ lý Khai báo Thuế. Tôi có thể giúp bạn tra cứu luật thuế, tính thuế (dựa trên ngành nghề, doanh thu và chi phí của hộ kinh doanh).",
-      isUser: false,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([DEFAULT_GREETING]);
   const [inputMessage, setInputMessage] = useState("");
   const [revenue, setRevenue] = useState("");
   const [displayRevenue, setDisplayRevenue] = useState("");
@@ -180,7 +180,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
           // Tự động load phiên gần nhất
           loadSession(sessions[0].id, token);
         } else {
-          setMessages([{ id: "1", text: "Xin chào! Tôi là AI Trợ lý Thuế. Hãy cung cấp doanh thu và ngành nghề, hoặc đính kèm ảnh tờ khai/hóa đơn để tôi tư vấn.", isUser: false }]);
+          setMessages([DEFAULT_GREETING]);
         }
       }
     } catch (err) {
@@ -197,14 +197,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
       if (response.ok) {
         const msgs = await response.json();
         if (msgs && msgs.length > 0) {
-          setMessages(msgs.map((m: any) => ({
-            id: m.id,
-            text: m.content,
-            isUser: m.role === 'user',
-            fileName: m.file_name,
-            fileType: m.file_type,
-            sources: m.tax_result_snapshot?.sources || m.sources
-          })));
+          setMessages([
+            DEFAULT_GREETING,
+            ...msgs.map((m: any) => ({
+              id: m.id,
+              text: m.content,
+              isUser: m.role === 'user',
+              fileName: m.file_name,
+              fileType: m.file_type,
+              sources: m.tax_result_snapshot?.sources || m.sources
+            }))
+          ]);
 
           // Bản sao mảng để tránh đảo ngược mảng chính
           const reverseMsgs = [...msgs].reverse();
@@ -220,7 +223,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             setTaxData(null);
           }
         } else {
-          setMessages([{ id: "1", text: "Xin chào! Bạn cần tư vấn về vấn đề gì?", isUser: false }]);
+          setMessages([DEFAULT_GREETING]);
         }
       }
     } catch (err) {
@@ -230,7 +233,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const createNewSession = () => {
     setCurrentSessionId(null);
-    setMessages([{ id: "1", text: "Xin chào! Bạn cần tư vấn về vấn đề gì?", isUser: false }]);
+    setMessages([DEFAULT_GREETING]);
     setTaxData(null);
   };
 
@@ -428,9 +431,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const onTaxSubmit = (e: FormEvent) => {
     e.preventDefault();
-    
+
     const methodText = method === 'khoan' ? 'Khoán' : 'Kê khai (Thu nhập tính thuế)';
-    
+
     let catText = category;
     if (internalGroupedCategories && Object.keys(internalGroupedCategories).length > 0) {
       for (const group of Object.values(internalGroupedCategories as Record<string, any[]>)) {
@@ -448,14 +451,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
       `**📝 Tính thuế cho tôi theo phương pháp "${methodText}":**`,
       `*   **Doanh thu**: ${localFormatVND(Number(revenue))}`
     ];
-    
+
     if (method === 'thu_nhap') {
       msgParts.push(`*   **Chi phí hợp lý**: ${localFormatVND(Number(expenses))}`);
     }
-    
+
     msgParts.push(`*   **Ngành nghề**: ${catText}`);
     msgParts.push(`👉 *Hãy giải thích tóm tắt bảng tính thuế này.*`);
-    
+
     const msg = msgParts.join('\n');
     handleSendMessage(msg, Number(revenue), category, method, Number(expenses), true);
   };
