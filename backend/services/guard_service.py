@@ -142,7 +142,7 @@ class GuardService:
         
         # Nhóm B: Từ khóa ngữ cảnh doanh nghiệp/kế toán (Context) -> Trọng số vừa (+1)
         context_keywords = [
-            "doanh thu", "chi phí", "lợi nhuận", "công ty", "doanh nghiệp", "kế toán",
+            "tính", "doanh thu", "chi phí", "lợi nhuận", "công ty", "doanh nghiệp", "kế toán",
             "khấu trừ", "miễn giảm", "chịu thuế", "luật", "nghị định", "thông tư",
             "thu nhập", "mặt hàng", "xuất khẩu", "nhập khẩu", "bán hàng", "kinh doanh",
             "phạt", "chậm nộp", "trốn thuế", "đóng thuế", "nghĩa vụ"
