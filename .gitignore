@@ -4,6 +4,7 @@ backend/.venv/
 *.py[cod]
 *$py.class
 backend/.env
+backend/uploads/*
 
 # Frontend (Next.js)
 frontend/node_modules/
