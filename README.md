@@ -36,9 +36,9 @@ Tax_AI Trust Blueprint là hệ thống hỗ trợ khai báo thuế và quản l
 ```text
 AI_TAX/
 ├── backend/            # Flask API & Business Logic (GuardService, TaxCalculator)
+|   └── uploads/            # Thư mục lưu trữ hóa đơn tạm thời (đã mã hóa)
 ├── frontend/           # Giao diện người dùng Next.js
-├── documents/          # Thư viện văn bản pháp luật (PDF/Markdown) cho RAG
-└── uploads/            # Thư mục lưu trữ hóa đơn tạm thời (đã mã hóa)
+└── documents/          # Thư viện văn bản pháp luật (PDF/Markdown) cho RAG
 ```
 
 ---
