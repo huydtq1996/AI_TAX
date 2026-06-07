@@ -24,7 +24,7 @@ Tax_AI Trust Blueprint là hệ thống hỗ trợ khai báo thuế và quản l
 | Thành phần | Công nghệ |
 | :--- | :--- |
 | **Frontend** | Next.js 14.2 (TypeScript), Vanilla CSS |
-| **Backend** | Flask 3.1 (Python 3.10) |
+| **Backend** | Flask 3.1 (Python 3.14) |
 | **LLM Engine** | Gemini 2.5 Flash |
 | **Vector DB** | Supabase (PostgreSQL + pgvector) |
 | **Embedding** | Gemini-Embedding-2 (768 dimensions) |
