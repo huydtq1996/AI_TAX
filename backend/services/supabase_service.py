@@ -98,7 +98,7 @@ class SupabaseService:
         response = requests.post(
             f"{self.url}/rest/v1/rpc/match_tax_documents", 
             headers=headers, 
-            json={'query_embedding': query_vector, 'match_threshold': 0.1, 'match_count': 100}
+            json={'query_embedding': query_vector, 'match_threshold': 0.1, 'match_count': 50}
         )
         
         if response.status_code == 200:
@@ -116,8 +116,8 @@ class SupabaseService:
                     grouped_results[law_name].append(r)
 
                 filtered_results = []
-                max_total_chunks = 15
-                max_per_doc = 5 # Vẫn giữ luật không quá 5 đoạn/văn bản để tránh loãng
+                max_total_chunks = 8
+                max_per_doc = 3 # Giảm số lượng để tăng tốc độ xử lý
                 
                 doc_pull_counts = defaultdict(int)
 
