@@ -292,6 +292,27 @@ def chat():
     
     return jsonify(response)
 
+@app.route('/api/calculate-tax', methods=['POST'])
+@limit_requests(30, 60)
+def calculate_tax_only():
+    # API chuyên dụng chỉ tính toán số thuế, bỏ qua AI (Gemini) để tăng tốc tuyệt đối
+    revenue_str = request.form.get('revenue', '0')
+    revenue = float(revenue_str) if revenue_str else 0
+    category = request.form.get('category', 'hoat_dong_khac')
+    method = request.form.get('method', 'doanh_thu')
+    expenses_str = request.form.get('expenses', '0')
+    expenses = float(expenses_str) if expenses_str else 0
+    
+    if revenue <= 0:
+        return jsonify({"error": "Vui lòng nhập doanh thu lớn hơn 0"}), 400
+        
+    tax_result = tax_calculator.calculate_tax(revenue, category, method, expenses)
+    
+    return jsonify({
+        "tax_table": tax_result,
+        "message": "Tính toán thành công (Fast Mode)"
+    })
+
 @app.route('/api/files', methods=['GET'])
 @limit_requests(30, 60)
 def list_files():
