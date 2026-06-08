@@ -510,7 +510,34 @@ export default function Home() {
     handleSendMessage(msg, Number(revenue), category, method, Number(expenses));
   };
 
-
+  const onFastTaxSubmit = async () => {
+    if (!revenue || Number(revenue) <= 0) {
+      alert("Vui lòng nhập doanh thu hợp lệ lớn hơn 0");
+      return;
+    }
+    
+    try {
+      const formData = new FormData();
+      formData.append("revenue", revenue);
+      formData.append("category", category);
+      formData.append("method", method);
+      formData.append("expenses", expenses || "0");
+      
+      const response = await fetch("/api/calculate-tax", {
+        method: "POST",
+        body: formData,
+      });
+      
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+      } else if (data.tax_table) {
+        setTaxData(data.tax_table);
+      }
+    } catch (err) {
+      alert("Lỗi kết nối đến máy chủ.");
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -976,9 +1003,14 @@ export default function Home() {
                     </optgroup>
                   </select>
                 </div>
-                <button type="submit" className="secondary-button">
-                  Tính Thuế & Tư Vấn
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button type="submit" className="secondary-button" style={{ flex: 1 }}>
+                    <i className="fa-solid fa-robot"></i> AI Tư Vấn
+                  </button>
+                  <button type="button" onClick={onFastTaxSubmit} className="secondary-button" style={{ flex: 1, backgroundColor: '#10b981', color: 'white', border: 'none' }}>
+                    <i className="fa-solid fa-bolt"></i> Tính Nhanh
+                  </button>
+                </div>
               </form>
             </div>
 
