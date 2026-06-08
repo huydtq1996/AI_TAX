@@ -1,11 +1,11 @@
-# 🚀 Tax_AI Trust Blueprint
+# 🚀 Tax_AI
 **Trợ lý AI tin cậy cho 5,1 triệu hộ kinh doanh Việt Nam**
 
-Tax_AI Trust Blueprint là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch tài chính dành riêng cho hộ kinh doanh cá thể. Dự án kết hợp sức mạnh của LLM (Gemini 2.5 Flash) và cơ chế RAG (Retrieval-Augmented Generation) để đảm bảo tính chính xác về pháp lý và bảo mật dữ liệu tuyệt đối.
+Tax_AI là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch tài chính dành riêng cho hộ kinh doanh cá thể. Dự án kết hợp sức mạnh của LLM (Gemini 2.5 Flash) và cơ chế RAG (Retrieval-Augmented Generation) để đảm bảo tính chính xác về pháp lý và bảo mật dữ liệu tuyệt đối.
 
 > *"AI tốt không chỉ là AI chính xác — mà là AI mà con người có thể tin tưởng, hiểu được và kiểm soát được."*
 > 
-> — **Nhóm G12**
+> — **Nhóm thực hiện**
 
 ---
 
@@ -89,13 +89,9 @@ Hệ thống được thiết kế dựa trên 5 trụ cột đạo đức:
 
 ---
 
-## 👥 Đội ngũ thực hiện (Nhóm G12)
+## 👥 Đội ngũ thực hiện
 
 - Nguyễn Thái Tú
 - Đỗ Quốc Thắng
 - Quách Văn Ngọc
 - Dương Trần Quang Huy
-
-**Giảng viên hướng dẫn:** Phan Thế Duy
-
-*Dự án thuộc khuôn khổ môn học: AI002.F21.CN1.TTNT – Tư Duy Trí Tuệ Nhân Tạo.*
