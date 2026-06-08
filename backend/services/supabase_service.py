@@ -81,13 +81,6 @@ class SupabaseService:
                 json=data
             )
             if response.status_code in (200, 201):
-                from datetime import datetime, timezone
-                current_time = datetime.now(timezone.utc).isoformat()
-                requests.patch(
-                    f"{self.url}/rest/v1/chat_sessions?id=eq.{session_id}",
-                    headers=headers,
-                    json={"updated_at": current_time}
-                )
                 return True
             else:
                 print(f"Error saving message: {response.text}")
@@ -105,7 +98,7 @@ class SupabaseService:
         response = requests.post(
             f"{self.url}/rest/v1/rpc/match_tax_documents", 
             headers=headers, 
-            json={'query_embedding': query_vector, 'match_threshold': 0.3, 'match_count': 100}
+            json={'query_embedding': query_vector, 'match_threshold': 0.1, 'match_count': 50}
         )
         
         if response.status_code == 200:
@@ -123,8 +116,8 @@ class SupabaseService:
                     grouped_results[law_name].append(r)
 
                 filtered_results = []
-                max_total_chunks = 10
-                max_per_doc = 4 # Không lấy quá 4 đoạn/văn bản để tránh loãng
+                max_total_chunks = 8
+                max_per_doc = 3 # Giảm số lượng để tăng tốc độ xử lý
                 
                 doc_pull_counts = defaultdict(int)
 
@@ -134,7 +127,7 @@ class SupabaseService:
                     
                     # grouped_results giữ nguyên thứ tự xuất hiện ban đầu (văn bản có điểm cao nhất xếp trước)
                     for law_name, chunks in list(grouped_results.items()):
-                        # Nếu văn bản này vẫn còn đoạn chưa lấy VÀ chưa lấy quá 4 đoạn
+                        # Nếu văn bản này vẫn còn đoạn chưa lấy VÀ chưa lấy quá 5 đoạn
                         if chunks and doc_pull_counts[law_name] < max_per_doc:
                             filtered_results.append(chunks.pop(0))
                             doc_pull_counts[law_name] += 1
@@ -243,112 +236,85 @@ class SupabaseService:
         """
         Thực hiện Step (2) và (3):
         Tìm các văn bản mới hơn (bất kể loại văn bản), kiểm tra xem có sửa đổi/cập nhật văn bản gốc không.
-        Sử dụng cơ chế Batch Query để giảm số lượng request HTTP từ O(N) xuống O(1).
         """
         if not results: return results, []
         
         headers = {"apikey": self.key, "Authorization": f"Bearer {self.key}"}
-        
-        # 1. Trích xuất tất cả thông tin số hiệu tài liệu duy nhất từ kết quả tìm kiếm
-        doc_infos = {}
-        for row in results:
-            meta = row.get('metadata', {})
-            law_name = meta.get('law_name')
-            if law_name and law_name not in doc_infos:
-                doc_info = self._parse_doc_id(law_name)
-                if doc_info:
-                    doc_infos[law_name] = doc_info
-                    
-        if not doc_infos:
-            return results, []
-            
-        # 2. Xây dựng filter query OR để kéo toàn bộ các tài liệu sửa đổi tiềm năng trong 1 request duy nhất
-        or_conditions = []
-        for doc_info in doc_infos.values():
-            or_conditions.append(f"content.ilike.*{doc_info['full']}*")
-            
-        or_filter = f"({','.join(or_conditions)})"
-        
-        params = {
-            "select": "content,metadata,issue_date",
-            "or": or_filter
-        }
-        url = f"{self.url}/rest/v1/tax_documents"
-        
-        all_candidates = []
-        try:
-            resp = requests.get(url, headers=headers, params=params, timeout=5)
-            if resp.status_code == 200:
-                all_candidates = resp.json()
-            else:
-                print(f"Error fetching amenders in batch: {resp.text}")
-        except Exception as e:
-            print(f"Exception fetching amenders in batch: {e}")
-            
-        # 3. Phân tích và đối chiếu kết quả trong bộ nhớ (In-memory cross-reference)
-        checked_law_names = {}
-        amendment_docs = []
-        keywords = ["sửa đổi", "bổ sung", "bãi bỏ", "thay thế", "áp dụng", "điều chỉnh"]
+        checked_law_names = {} 
+        amendment_docs = [] 
         
         for row in results:
             meta = row.get('metadata', {})
             law_name = meta.get('law_name')
             
             if not law_name: continue
-            doc_info = doc_infos.get(law_name)
-            if not doc_info: continue
             
+            doc_info = self._parse_doc_id(law_name)
+            if not doc_info: continue
+
             if law_name in checked_law_names:
                 row['amended_by'] = checked_law_names[law_name]
                 continue
-                
-            amender_law_name = None
+
+            # TÌM CROSS-TYPE: Tìm MỌI văn bản mà nội dung có chứa số hiệu của văn bản cũ (VD: "109/2025/QH15")
+            # Sử dụng parameter truyền vào để an toàn với ký tự "/" trong số hiệu
+            params = {
+                "select": "content,metadata,issue_date",
+                "content": f"ilike.*{doc_info['full']}*"
+            }
+            url = f"{self.url}/rest/v1/tax_documents"
             
-            # Quét qua danh sách ứng viên đã fetch được
-            for item in all_candidates:
-                item_content = item.get('content', '')
-                # Kiểm tra xem tài liệu ứng viên này có chứa số hiệu của tài liệu đang xét hay không
-                if doc_info['full'] not in item_content:
-                    continue
-                    
-                item_meta = item.get('metadata', {})
-                item_law_name = item_meta.get('law_name')
-                item_info = self._parse_doc_id(item_law_name)
-                if not item_info: continue
+            try:
+                resp = requests.get(url, headers=headers, params=params, timeout=5)
+                if resp.status_code != 200: continue
                 
-                # LOGIC SO SÁNH THỜI GIAN ĐA DẠNG:
-                is_newer = False
+                amender_law_name = None
                 
-                # 1. So sánh Năm
-                if item_info['year'] > doc_info['year']:
-                    is_newer = True
-                # 2. Nếu cùng Năm
-                elif item_info['year'] == doc_info['year']:
-                    item_date = item.get('issue_date', '0000-00-00')
-                    doc_date = row.get('issue_date', '0000-00-00')
+                for item in resp.json():
+                    item_meta = item.get('metadata', {})
+                    item_law_name = item_meta.get('law_name')
+                    item_info = self._parse_doc_id(item_law_name)
                     
-                    if item_date != '0000-00-00' and doc_date != '0000-00-00':
-                        if item_date > doc_date:
-                            is_newer = True
-                    elif item_info['type'] == doc_info['type'] and item_info['number'] > doc_info['number']:
+                    if not item_info: continue
+                    
+                    # LOGIC SO SÁNH THỜI GIAN ĐA DẠNG:
+                    is_newer = False
+                    
+                    # 1. So sánh Năm
+                    if item_info['year'] > doc_info['year']:
                         is_newer = True
+                    # 2. Nếu cùng Năm
+                    elif item_info['year'] == doc_info['year']:
+                        item_date = item.get('issue_date', '0000-00-00')
+                        doc_date = row.get('issue_date', '0000-00-00')
                         
-                if is_newer:
-                    content_lower = item_content.lower()
-                    if any(kw in content_lower for kw in keywords):
-                        amender_law_name = item_law_name
-                        if item not in amendment_docs:
-                            amendment_docs.append(item)
+                        # So sánh ngày ban hành (nếu DB có dữ liệu issue_date chuẩn)
+                        if item_date != '0000-00-00' and doc_date != '0000-00-00':
+                            if item_date > doc_date:
+                                is_newer = True
+                        # Nếu không có ngày ban hành cụ thể, mà CÙNG LOẠI văn bản thì so sánh số hiệu
+                        elif item_info['type'] == doc_info['type'] and item_info['number'] > doc_info['number']:
+                            is_newer = True
                             
-            if amender_law_name:
-                checked_law_names[law_name] = amender_law_name
-                row['amended_by'] = amender_law_name
-            else:
-                checked_law_names[law_name] = None
+                    if is_newer:
+                        content = item.get('content', '').lower()
+                        keywords = ["sửa đổi", "bổ sung", "bãi bỏ", "thay thế", "áp dụng", "điều chỉnh"]
+                        
+                        # Kiểm tra xem văn bản mới có thực sự chứa từ khóa tác động lên văn bản cũ không
+                        if any(kw in content for kw in keywords):
+                            amender_law_name = item_law_name
+                            amendment_docs.append(item)
+                
+                if amender_law_name:
+                    checked_law_names[law_name] = amender_law_name
+                    row['amended_by'] = amender_law_name
+                else:
+                    checked_law_names[law_name] = None
+                    
+            except Exception as e:
+                print(f"Error checking DB for cross-updates: {e}")
                 
         return results, amendment_docs
-
-
 
     def get_sessions(self, user_token):
         if not self.url or not self.key or not user_token:
@@ -360,7 +326,7 @@ class SupabaseService:
         }
         try:
             response = requests.get(
-                f"{self.url}/rest/v1/chat_sessions?order=updated_at.desc", 
+                f"{self.url}/rest/v1/chat_sessions?order=created_at.desc", 
                 headers=headers
             )
             if response.status_code == 200:
@@ -435,7 +401,7 @@ class SupabaseService:
         }
         try:
             response = requests.get(
-                f"{self.url}/rest/v1/user_files?select=file_name,file_type,created_at", 
+                f"{self.url}/rest/v1/chat_messages?file_name=not.is.null&select=file_name,file_type,created_at", 
                 headers=headers
             )
             if response.status_code == 200:
@@ -445,300 +411,3 @@ class SupabaseService:
         except Exception as e:
             print(f"Exception fetching user files: {e}")
         return []
-
-    def save_user_file(self, user_token, file_name, file_type, attached_file_url=None):
-        if not self.url or not self.key or not user_token or not file_name:
-            return False
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        
-        # Kiểm tra xem tệp tin đã được lưu trong DB chưa để tránh trùng lặp
-        try:
-            check_resp = requests.get(
-                f"{self.url}/rest/v1/user_files?file_name=eq.{file_name}",
-                headers=headers
-            )
-            if check_resp.status_code == 200 and len(check_resp.json()) > 0:
-                return True
-        except Exception as e:
-            print(f"Exception checking user file: {e}")
-            
-        data = {
-            "file_name": file_name,
-            "file_type": file_type,
-            "attached_file_url": attached_file_url
-        }
-        try:
-            response = requests.post(
-                f"{self.url}/rest/v1/user_files", 
-                headers=headers, 
-                json=data
-            )
-            return response.status_code in (200, 201)
-        except Exception as e:
-            print(f"Exception saving user file: {e}")
-        return False
-
-    def delete_user_file(self, user_token, file_name):
-        if not self.url or not self.key or not user_token or not file_name:
-            return False
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        try:
-            response = requests.delete(
-                f"{self.url}/rest/v1/user_files?file_name=eq.{file_name}", 
-                headers=headers
-            )
-            return response.status_code in (200, 204)
-        except Exception as e:
-            print(f"Exception deleting user file: {e}")
-        return False
-
-    def get_business_settings(self, user_token):
-        if not self.url or not self.key or not user_token:
-            return {"business_name": "My Business", "business_category": "ban_buon_ban_le", "declaration_type": "quy"}
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        try:
-            response = requests.get(
-                f"{self.url}/rest/v1/business_settings", 
-                headers=headers
-            )
-            if response.status_code == 200:
-                data = response.json()
-                if data and len(data) > 0:
-                    record = data[0]
-                    # Giải mã dữ liệu (hỗ trợ fallback nếu dữ liệu cũ chưa mã hóa)
-                    dec_name = self.encryption_service.decrypt_text(record["business_name"])
-                    if dec_name == "[Lỗi giải mã nội dung]":
-                        dec_name = record["business_name"]
-                    record["business_name"] = dec_name
-                    
-                    dec_cat = self.encryption_service.decrypt_text(record["business_category"])
-                    if dec_cat == "[Lỗi giải mã nội dung]":
-                        dec_cat = record["business_category"]
-                    record["business_category"] = dec_cat
-                    
-                    dec_type = self.encryption_service.decrypt_text(record.get("declaration_type", ""))
-                    if dec_type == "[Lỗi giải mã nội dung]" or not dec_type:
-                        dec_type = record.get("declaration_type", "quy")
-                    record["declaration_type"] = dec_type
-                    return record
-                else:
-                    # Tạo cấu hình mặc định (mã hóa trước khi gửi đi)
-                    enc_name = self.encryption_service.encrypt_text("My Business")
-                    enc_cat = self.encryption_service.encrypt_text("ban_buon_ban_le")
-                    enc_type = self.encryption_service.encrypt_text("quy")
-                    create_resp = requests.post(
-                        f"{self.url}/rest/v1/business_settings",
-                        headers={**headers, "Prefer": "return=representation"},
-                        json={"business_name": enc_name, "business_category": enc_cat, "declaration_type": enc_type}
-                    )
-                    if create_resp.status_code in (200, 201):
-                          create_data = create_resp.json()
-                          if create_data and len(create_data) > 0:
-                              record = create_data[0]
-                              record["business_name"] = "My Business"
-                              record["business_category"] = "ban_buon_ban_le"
-                              record["declaration_type"] = "quy"
-                              return record
-            else:
-                print(f"Error fetching business settings: {response.text}")
-        except Exception as e:
-            print(f"Exception fetching business settings: {e}")
-        return {"business_name": "My Business", "business_category": "ban_buon_ban_le", "declaration_type": "quy"}
-
-    def update_business_settings(self, user_token, business_name, business_category, declaration_type="quy"):
-        if not self.url or not self.key or not user_token:
-            return False
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        try:
-            # First fetch to get the record ID
-            settings = self.get_business_settings(user_token)
-            if not settings or "id" not in settings:
-                return False
-            
-            settings_id = settings["id"]
-            # Mã hóa dữ liệu trước khi cập nhật
-            enc_name = self.encryption_service.encrypt_text(business_name)
-            enc_cat = self.encryption_service.encrypt_text(business_category)
-            enc_type = self.encryption_service.encrypt_text(declaration_type)
-            
-            from datetime import datetime, timezone
-            current_time = datetime.now(timezone.utc).isoformat()
-
-            # Try to update with declaration_type
-            response = requests.patch(
-                f"{self.url}/rest/v1/business_settings?id=eq.{settings_id}",
-                headers=headers,
-                json={
-                    "business_name": enc_name, 
-                    "business_category": enc_cat,
-                    "declaration_type": enc_type,
-                    "updated_at": current_time
-                }
-            )
-            if response.status_code not in (200, 204):
-                # Fallback if declaration_type column does not exist yet
-                response = requests.patch(
-                    f"{self.url}/rest/v1/business_settings?id=eq.{settings_id}",
-                    headers=headers,
-                    json={
-                        "business_name": enc_name, 
-                        "business_category": enc_cat,
-                        "updated_at": current_time
-                    }
-                )
-            return response.status_code in (200, 204)
-        except Exception as e:
-            print(f"Exception updating business settings: {e}")
-        return False
-
-    def get_transactions(self, user_token):
-        if not self.url or not self.key or not user_token:
-            return []
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        try:
-            response = requests.get(
-                f"{self.url}/rest/v1/transactions?order=date.desc,created_at.desc", 
-                headers=headers
-            )
-            if response.status_code == 200:
-                txs = response.json()
-                # Giải mã từng giao dịch (hỗ trợ fallback nếu dữ liệu cũ chưa mã hóa)
-                for tx in txs:
-                    if "amount" in tx and tx["amount"]:
-                        dec_amount = self.encryption_service.decrypt_text(tx["amount"])
-                        if dec_amount == "[Lỗi giải mã nội dung]":
-                            dec_amount = tx["amount"]
-                        try:
-                            tx["amount"] = float(dec_amount)
-                        except ValueError:
-                            tx["amount"] = 0.0
-                    if "description" in tx and tx["description"]:
-                        dec_desc = self.encryption_service.decrypt_text(tx["description"])
-                        if dec_desc == "[Lỗi giải mã nội dung]":
-                            dec_desc = tx["description"]
-                        tx["description"] = dec_desc
-                return txs
-            else:
-                print(f"Error fetching transactions: {response.text}")
-        except Exception as e:
-            print(f"Exception fetching transactions: {e}")
-        return []
-
-    def add_transaction(self, user_token, date, amount, description):
-        if not self.url or not self.key or not user_token:
-            return None
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json",
-            "Prefer": "return=representation"
-        }
-        # Mã hóa trước khi lưu
-        enc_amount = self.encryption_service.encrypt_text(str(amount))
-        enc_desc = self.encryption_service.encrypt_text(description)
-        data = {
-            "date": date,
-            "amount": enc_amount,
-            "description": enc_desc
-        }
-        try:
-            response = requests.post(
-                f"{self.url}/rest/v1/transactions", 
-                headers=headers, 
-                json=data
-            )
-            if response.status_code in (200, 201):
-                res = response.json()
-                if res and len(res) > 0:
-                    tx = res[0]
-                    tx["amount"] = amount
-                    tx["description"] = description
-                    return tx
-            else:
-                print(f"Error adding transaction: {response.text}")
-        except Exception as e:
-            print(f"Exception adding transaction: {e}")
-        return None
-
-    def update_transaction(self, user_token, transaction_id, date, amount, description):
-        if not self.url or not self.key or not user_token or not transaction_id:
-            return False
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        # Mã hóa trước khi cập nhật
-        enc_amount = self.encryption_service.encrypt_text(str(amount))
-        enc_desc = self.encryption_service.encrypt_text(description)
-        
-        from datetime import datetime, timezone
-        current_time = datetime.now(timezone.utc).isoformat()
-        
-        data = {
-            "date": date,
-            "amount": enc_amount,
-            "description": enc_desc,
-            "updated_at": current_time
-        }
-        try:
-            response = requests.patch(
-                f"{self.url}/rest/v1/transactions?id=eq.{transaction_id}", 
-                headers=headers, 
-                json=data
-            )
-            if response.status_code not in (200, 204):
-                # Fallback nếu cột updated_at chưa tồn tại trên database
-                fallback_data = {
-                    "date": date,
-                    "amount": enc_amount,
-                    "description": enc_desc
-                }
-                response = requests.patch(
-                    f"{self.url}/rest/v1/transactions?id=eq.{transaction_id}", 
-                    headers=headers, 
-                    json=fallback_data
-                )
-            return response.status_code in (200, 204)
-        except Exception as e:
-            print(f"Exception updating transaction: {e}")
-        return False
-
-    def delete_transaction(self, user_token, transaction_id):
-        if not self.url or not self.key or not user_token or not transaction_id:
-            return False
-        headers = {
-            "apikey": self.key, 
-            "Authorization": f"Bearer {user_token}", 
-            "Content-Type": "application/json"
-        }
-        try:
-            response = requests.delete(
-                f"{self.url}/rest/v1/transactions?id=eq.{transaction_id}", 
-                headers=headers
-            )
-            return response.status_code in (200, 204)
-        except Exception as e:
-            print(f"Exception deleting transaction: {e}")
-        return False
-
