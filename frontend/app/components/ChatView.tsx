@@ -9,6 +9,7 @@ type Message = {
   fileName?: string;
   fileType?: string;
   sources?: string[];
+  ragBypassedReason?: string | null;
 };
 
 type TaxData = {
@@ -334,13 +335,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
           if (prev.some((m) => m.id === typingId)) {
             return prev.map((m) =>
               m.id === typingId
-                ? { ...m, text: errorText, isTyping: false }
+                ? { ...m, text: errorText, isTyping: false, ragBypassedReason: data.rag_bypassed_reason }
                 : m
             );
           } else {
             return [
               ...prev,
-              { id: Date.now().toString(), text: errorText, isUser: false },
+              { id: Date.now().toString(), text: errorText, isUser: false, ragBypassedReason: data.rag_bypassed_reason },
             ];
           }
         });
@@ -348,7 +349,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         setMessages((prev) => {
           if (prev.some((m) => m.id === typingId)) {
             return prev.map((m) => {
-              if (m.id === typingId) return { ...m, text: data.text, isTyping: false, sources: data.sources };
+              if (m.id === typingId) return { ...m, text: data.text, isTyping: false, sources: data.sources, ragBypassedReason: data.rag_bypassed_reason };
               if (m.id === userId && data.user_message) return { ...m, text: data.user_message };
               return m;
             });
@@ -356,7 +357,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             const next = prev.map((m) => (m.id === userId && data.user_message) ? { ...m, text: data.user_message } : m);
             return [
               ...next,
-              { id: Date.now().toString(), text: data.text, isUser: false, sources: data.sources },
+              { id: Date.now().toString(), text: data.text, isUser: false, sources: data.sources, ragBypassedReason: data.rag_bypassed_reason },
             ];
           }
         });
@@ -432,7 +433,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const onTaxSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    const methodText = method === 'khoan' ? 'Khoán' : 'Kê khai (Thu nhập tính thuế)';
+    const methodText = method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế';
 
     let catText = category;
     if (internalGroupedCategories && Object.keys(internalGroupedCategories).length > 0) {
@@ -640,15 +641,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         <div className="message-content-fade-in">
                           {renderFormattedText(msg.text)}
 
-                          {msg.sources && msg.sources.length > 0 && (
+                          {(msg.sources && msg.sources.length > 0) || msg.ragBypassedReason ? (
                             <div className="sources-wrapper" style={{
                               marginTop: '12px',
                               paddingTop: '12px',
                               borderTop: '1px solid var(--border-color)',
                             }}>
-                              <details style={{ cursor: 'pointer' }}>
-                                <summary style={{
-                                  listStyle: 'none',
+                              {msg.ragBypassedReason ? (
+                                <div style={{
                                   display: 'flex',
                                   alignItems: 'center',
                                   gap: '8px',
@@ -657,38 +657,55 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   color: 'var(--primary)',
                                   textTransform: 'uppercase',
                                   letterSpacing: '0.03em',
-                                  outline: 'none'
                                 }}>
                                   <i className="fa-solid fa-circle-info"></i>
-                                  Nguồn tham chiếu ({msg.sources.length})
-                                  <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.6rem', marginLeft: 'auto', transition: 'transform 0.3s' }}></i>
-                                </summary>
-
-                                <div className="sources-list" style={{
-                                  marginTop: '10px',
-                                  display: 'flex',
-                                  flexWrap: 'wrap',
-                                  gap: '6px',
-                                  animation: 'slideDown 0.2s ease-out'
-                                }}>
-                                  {msg.sources.map((source: string, idx: number) => (
-                                    <span key={idx} style={{
-                                      fontSize: '0.7rem',
-                                      padding: '3px 10px',
-                                      backgroundColor: 'rgba(79, 70, 229, 0.08)',
-                                      borderRadius: '100px',
-                                      border: '1px solid rgba(79, 70, 229, 0.15)',
-                                      color: 'var(--primary)',
-                                      fontWeight: '500',
-                                      display: 'inline-block'
-                                    }}>
-                                      {source}
-                                    </span>
-                                  ))}
+                                  Nguồn tham chiếu: 0 ({msg.ragBypassedReason})
                                 </div>
-                              </details>
+                              ) : (
+                                <details style={{ cursor: 'pointer' }}>
+                                  <summary style={{
+                                    listStyle: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '700',
+                                    color: 'var(--primary)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.03em',
+                                    outline: 'none'
+                                  }}>
+                                    <i className="fa-solid fa-circle-info"></i>
+                                    Nguồn tham chiếu ({msg.sources?.length || 0})
+                                    <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.6rem', marginLeft: 'auto', transition: 'transform 0.3s' }}></i>
+                                  </summary>
+
+                                  <div className="sources-list" style={{
+                                    marginTop: '10px',
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: '6px',
+                                    animation: 'slideDown 0.2s ease-out'
+                                  }}>
+                                    {msg.sources?.map((source: string, idx: number) => (
+                                      <span key={idx} style={{
+                                        fontSize: '0.7rem',
+                                        padding: '3px 10px',
+                                        backgroundColor: 'rgba(79, 70, 229, 0.08)',
+                                        borderRadius: '100px',
+                                        border: '1px solid rgba(79, 70, 229, 0.15)',
+                                        color: 'var(--primary)',
+                                        fontWeight: '500',
+                                        display: 'inline-block'
+                                      }}>
+                                        {source}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </details>
+                              )}
                             </div>
-                          )}
+                          ) : null}
                         </div>
                       )}
                     </div>
@@ -818,8 +835,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                             <strong>Được miễn thuế</strong>
                           </div>
                           <div className="tax-item">
-                            <span>Lý do:</span>
-                            <span>{taxData.reason}</span>
+                            <p><strong>Lý do: </strong>{taxData.reason}</p>
                           </div>
                         </>
                       ) : (

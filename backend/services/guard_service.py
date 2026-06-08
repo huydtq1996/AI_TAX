@@ -67,7 +67,7 @@ class GuardService:
         special_char_ratio = special_chars / len(user_input)
         
         # Nếu hơn 40% là ký tự đặc biệt, có thể là mã độc hoặc dữ liệu rác
-        if special_char_ratio > 0.4 and len(user_input) > 20:
+        if special_char_ratio > 0.4:
              reason = "Câu hỏi có quá nhiều ký tự đặc biệt (Tokenizer attack?)"
              print(f"[Guard] BỊ CHẶN: {reason}")
              return False, reason
@@ -95,7 +95,7 @@ class GuardService:
 
     def check_relevance(self, prompt: str, gemini_service=None) -> str:
         """
-        BƯỚC 3: Phân loại câu hỏi của người dùng (AI Check 0).
+        BƯỚC 3: Phân loại câu hỏi của người dùng (AI Check).
         Đã chuyển từ dùng LLM sang Keyword-based để tiết kiệm API Quota (ngăn lỗi 429).
         Trả về: "RELEVANT" hoặc "GREETING".
         (Việc chặn "UNRELATED" sẽ do System Prompt của AI chính đảm nhiệm)

@@ -134,7 +134,7 @@ class SupabaseService:
                     
                     # grouped_results giữ nguyên thứ tự xuất hiện ban đầu (văn bản có điểm cao nhất xếp trước)
                     for law_name, chunks in list(grouped_results.items()):
-                        # Nếu văn bản này vẫn còn đoạn chưa lấy VÀ chưa lấy quá 5 đoạn
+                        # Nếu văn bản này vẫn còn đoạn chưa lấy VÀ chưa lấy quá 4 đoạn
                         if chunks and doc_pull_counts[law_name] < max_per_doc:
                             filtered_results.append(chunks.pop(0))
                             doc_pull_counts[law_name] += 1

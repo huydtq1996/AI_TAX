@@ -183,7 +183,8 @@ def chat():
     is_safe, blocked_reason = guard_service.check_input(user_message)
     if not is_safe:
         return jsonify({
-            "error": f"Tin nhắn bị từ chối: {blocked_reason}"
+            "error": f"Tin nhắn bị từ chối: {blocked_reason}",
+            "rag_bypassed_reason": "Từ chối trả lời"
         }), 403
         
     # 1.1 Kiểm tra sự liên quan của câu hỏi (AI Check 0) trước khi chạy RAG
@@ -194,7 +195,7 @@ def chat():
         if relevance == "GREETING":
             is_relevant = False
 
-    # Tạo Session nếu chưa có
+    # 2. Tạo Session nếu chưa có
     if user_token and not session_id:
         if user_message:
             import re
@@ -204,7 +205,7 @@ def chat():
             title = "Kế hoạch đóng Thuế"
         session_id = supabase_service.create_session(title, user_token)
         
-    # 2. Xử lý File Upload
+    # 3. Xử lý File Upload
     file_path = None
     file_name = None
     file_type = None
@@ -221,31 +222,29 @@ def chat():
         if user_token:
             supabase_service.save_user_file(user_token, file_name, file_type)
 
-    # 3. Lưu tin nhắn của User
+    # 4. Lưu tin nhắn của User
     if user_token and session_id:
         supabase_service.save_message(session_id, 'user', user_message, user_token, file_name=file_name, file_type=file_type)
         
-    # 2. RAG - Lấy ngữ cảnh luật thuế
+    # 5. RAG - Lấy ngữ cảnh luật thuế
     legal_context = ""
     sources = []
+    needs_rag_flag = False
+    block_reason = None
     if is_relevant:
         needs_rag_flag, block_reason = guard_service.needs_rag(user_message)
-        if not needs_rag_flag:
-            return jsonify({
-                "error": f"Tin nhắn bị từ chối: {block_reason}"
-            }), 403
-            
-        # Chuyển đổi câu hỏi của user thành Vector
-        query_vector = gemini_service.embed_text(user_message)
-        legal_context, sources = supabase_service.search_tax_laws(query_vector)
+        if needs_rag_flag:
+            # Chuyển đổi câu hỏi của user thành Vector
+            query_vector = gemini_service.embed_text(user_message)
+            legal_context, sources = supabase_service.search_tax_laws(query_vector)
     
-    # 3. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
+    # 6. Tax Calculator - Tính thuế nếu có dữ liệu doanh thu
     tax_result = None
     if revenue > 0:
         tax_result = tax_calculator.calculate_tax(float(revenue), category, method, expenses)
         legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
         
-    # 4. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
+    # 7. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
     ai_response = gemini_service.generate_response(
         user_message, 
         context=legal_context, 
@@ -253,21 +252,32 @@ def chat():
         has_tax_result=(tax_result is not None)
     )
     
-    # Nếu lỗi API hoặc từ chối trả lời thì ẩn nguồn tham chiếu
+    # Nếu lỗi API hoặc từ chối trả lời thì Nguồn tham chiếu = 0
+    empty_sources_reason = None
+    if is_relevant and not needs_rag_flag:
+        empty_sources_reason = "Bỏ qua RAG"
+
     if ai_response is None:
         ai_response = "Xin lỗi, tôi không nhận được phản hồi từ mô hình AI."
-    is_error = ai_response.startswith("Lỗi") or "Hết quota" in ai_response
-    is_refusal = "Đây là chatbot về thuế!" in ai_response
+    is_error = ai_response.startswith("Lỗi") or "lỗi kết nối" in ai_response
+    is_refusal = "Xin lỗi, tôi không thể trả lời!" in ai_response
     if is_error or is_refusal:
+        if is_refusal:
+            if not needs_rag_flag and block_reason:
+                ai_response = f"Xin lỗi, tôi không thể trả lời! Lý do: {block_reason}."
+            else:
+                ai_response = "Xin lỗi, tôi không thể trả lời! Lý do: LLM phân loại 'UNRELATED'."
         sources = []
+        empty_sources_reason = "Lỗi API" if is_error else "Từ chối trả lời"
     else:
-        # 4.1 Guard Service - Kiểm tra phản hồi (Bảo mật & Phòng thủ)
+        # 7.1 Guard Service - Kiểm tra phản hồi (Bảo mật & Phòng thủ)
         is_safe_resp, blocked_reason_resp = guard_service.check_response(ai_response)
         if not is_safe_resp:
-            ai_response = f"Xin lỗi, yêu cầu của bạn không thể thực hiện được: {blocked_reason_resp}"
+            ai_response = f"Tin nhắn bị từ chối: {blocked_reason_resp}"
             sources = []
+            empty_sources_reason = "Chặn phản hồi"
         
-    # Lưu tin nhắn của AI
+    # 8. Lưu tin nhắn của AI
     if user_token and session_id:
         supabase_service.save_message(session_id, 'assistant', ai_response, user_token, tax_snapshot=tax_result, sources=sources)
     
@@ -276,6 +286,7 @@ def chat():
         "tax_table": tax_result,
         "session_id": session_id,
         "sources": sources,
+        "rag_bypassed_reason": empty_sources_reason,
         "user_message": user_message
     }
     
