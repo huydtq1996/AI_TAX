@@ -292,6 +292,39 @@ def chat():
     
     return jsonify(response)
 
+@app.route('/api/calculate-tax', methods=['POST'])
+@limit_requests(30, 60)
+def calculate_tax_only():
+    if request.is_json:
+        data = request.json
+    else:
+        data = request.form
+
+    revenue_str = data.get('revenue', '0')
+    try:
+        revenue = float(revenue_str) if revenue_str else 0
+    except ValueError:
+        revenue = 0
+
+    category = data.get('category', 'hoat_dong_khac')
+    method = data.get('method', 'doanh_thu')
+    
+    expenses_str = data.get('expenses', '0')
+    try:
+        expenses = float(expenses_str) if expenses_str else 0
+    except ValueError:
+        expenses = 0
+    
+    if revenue <= 0:
+        return jsonify({"error": "Vui lòng nhập doanh thu lớn hơn 0"}), 400
+        
+    tax_result = tax_calculator.calculate_tax(revenue, category, method, expenses)
+    
+    return jsonify({
+        "tax_table": tax_result,
+        "message": "Tính toán thành công"
+    })
+
 @app.route('/api/files', methods=['GET'])
 @limit_requests(30, 60)
 def list_files():

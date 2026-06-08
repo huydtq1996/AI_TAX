@@ -105,7 +105,7 @@ class SupabaseService:
         response = requests.post(
             f"{self.url}/rest/v1/rpc/match_tax_documents", 
             headers=headers, 
-            json={'query_embedding': query_vector, 'match_threshold': 0.3, 'match_count': 100}
+            json={'query_embedding': query_vector, 'match_threshold': 0.3, 'match_count': 50}
         )
         
         if response.status_code == 200:
@@ -123,8 +123,8 @@ class SupabaseService:
                     grouped_results[law_name].append(r)
 
                 filtered_results = []
-                max_total_chunks = 10
-                max_per_doc = 4 # Không lấy quá 4 đoạn/văn bản để tránh loãng
+                max_total_chunks = 8
+                max_per_doc = 3 # Không lấy quá 3 đoạn/văn bản để tránh loãng
                 
                 doc_pull_counts = defaultdict(int)
 
@@ -134,7 +134,7 @@ class SupabaseService:
                     
                     # grouped_results giữ nguyên thứ tự xuất hiện ban đầu (văn bản có điểm cao nhất xếp trước)
                     for law_name, chunks in list(grouped_results.items()):
-                        # Nếu văn bản này vẫn còn đoạn chưa lấy VÀ chưa lấy quá 4 đoạn
+                        # Nếu văn bản này vẫn còn đoạn chưa lấy VÀ chưa lấy quá 3 đoạn
                         if chunks and doc_pull_counts[law_name] < max_per_doc:
                             filtered_results.append(chunks.pop(0))
                             doc_pull_counts[law_name] += 1

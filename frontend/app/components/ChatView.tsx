@@ -433,6 +433,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const onTaxSubmit = (e: FormEvent) => {
     e.preventDefault();
 
+    if (!revenue || Number(revenue) <= 0) {
+      alert("Vui lòng nhập doanh thu lớn hơn 0");
+      return;
+    }
+
     const methodText = method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế';
 
     let catText = category;
@@ -462,6 +467,40 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     const msg = msgParts.join('\n');
     handleSendMessage(msg, Number(revenue), category, method, Number(expenses), true);
+  };
+
+  const onFastTaxSubmit = async (e: React.FormEvent | React.MouseEvent) => {
+    e.preventDefault();
+
+    if (!revenue || Number(revenue) <= 0) {
+      alert("Vui lòng nhập doanh thu lớn hơn 0");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("revenue", revenue.toString());
+    formData.append("category", category);
+    formData.append("method", method);
+    formData.append("expenses", expenses.toString() || "0");
+    if (userToken) formData.append("supabase_token", userToken);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const response = await fetch(`${apiUrl}/api/calculate-tax`, {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        alert(data.error);
+      } else if (data.tax_table) {
+        setTaxData(data.tax_table);
+      }
+    } catch (error) {
+      console.error("Fast tax calculation failed:", error);
+      alert("Đã có lỗi xảy ra khi tính thuế nhanh.");
+    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -819,9 +858,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       )}
                     </select>
                   </div>
-                  <button type="submit" className="secondary-button">
-                    TÍNH THUẾ & TƯ VẤN
-                  </button>
+                  <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+                    <button type="submit" className="secondary-button" style={{ flex: 1 }}>
+                      <i className="fa-solid fa-robot"></i> AI Tư Vấn
+                    </button>
+                    <button type="button" onClick={onFastTaxSubmit} className="secondary-button" style={{ flex: 1 }}>
+                      <i className="fa-solid fa-bolt"></i> Tính Nhanh
+                    </button>
+                  </div>
                 </form>
 
                 {taxData && (
