@@ -1,5 +1,6 @@
 # 🚀 Tax_AI
-**Trợ lý AI tin cậy cho 5,1 triệu hộ kinh doanh Việt Nam**
+
+**Trợ lý AI tin cậy dành riêng cho hộ kinh doanh cá thể Việt Nam**
 
 Tax_AI là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch tài chính dành riêng cho hộ kinh doanh cá thể. Dự án kết hợp sức mạnh của LLM (Gemini 2.5 Flash) và cơ chế RAG (Retrieval-Augmented Generation) để đảm bảo tính chính xác về pháp lý và bảo mật dữ liệu tuyệt đối.
 
@@ -9,7 +10,7 @@ Tax_AI là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch 
 
 ---
 
-## ✨ Tính năng cốt lõi (Beyond Accuracy)
+## ✨ Tính năng cốt lõi
 
 - 📚 **Tra cứu Luật Thuế Chính xác:** Sử dụng RAG với cơ sở dữ liệu từ Thông tư 40/2021/TT-BTC và mới nhất là Nghị định 141/2026/NĐ-CP (ngưỡng miễn thuế 1 tỷ VNĐ).
 - 🧮 **Tính thuế Deterministic:** Thuế suất được lập trình cứng (hard-coded) để loại bỏ hoàn toàn hiện tượng "ảo giác" toán học của AI, đảm bảo chính xác 100% về con số.
