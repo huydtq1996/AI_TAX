@@ -29,6 +29,15 @@ Tax_AI Trust Blueprint là hệ thống hỗ trợ khai báo thuế và quản l
 | **Vector DB** | Supabase (PostgreSQL + pgvector) |
 | **Embedding** | Gemini-Embedding-2 (768 dimensions) |
 
+### 📦 Các thư viện Node.js (Node Modules)
+Dự án sử dụng các module chính sau (tập trung tại `frontend`):
+- **`next`** (`^14.2.24`): Framework React cốt lõi.
+- **`react`**, **`react-dom`** (`^18`): Thư viện xây dựng giao diện UI.
+- **`@supabase/supabase-js`** (`^2.105.1`): Giao tiếp với Supabase (Vector DB).
+- **`marked`** (`^18.0.4`): Parse và render văn bản Markdown.
+- **`http-proxy`** (`^1.18.1`): Thiết lập reverse proxy chuyển tiếp request từ frontend sang backend.
+- Cùng với các devDependencies phục vụ phát triển: `typescript`, `eslint`, `eslint-config-next`, và các gói `@types/*`.
+
 ---
 
 ## 🏗️ Cấu trúc dự án
@@ -36,7 +45,7 @@ Tax_AI Trust Blueprint là hệ thống hỗ trợ khai báo thuế và quản l
 ```text
 AI_TAX/
 ├── backend/            # Flask API & Business Logic (GuardService, TaxCalculator)
-|   └── uploads/            # Thư mục lưu trữ hóa đơn tạm thời (đã mã hóa)
+|   └── uploads/        # Thư mục lưu trữ tệp người dùng tải lên khi sử dụng Chat (đã mã hóa)
 ├── frontend/           # Giao diện người dùng Next.js
 └── documents/          # Thư viện văn bản pháp luật (PDF/Markdown) cho RAG
 ```
