@@ -126,7 +126,7 @@ def get_tax_rates():
     })
 
 @app.route('/api/chat', methods=['POST'])
-@limit_requests(30, 60)
+@limit_requests(20, 60)
 def chat():
     # Nhận dữ liệu dạng Form Data (Hỗ trợ File)
     user_message = request.form.get('message', '')
@@ -635,7 +635,7 @@ def download_transaction_template():
         return jsonify({"error": f"Lỗi hệ thống khi tạo tệp tin mẫu: {str(e)}"}), 500
 
 @app.route('/api/transactions/ocr', methods=['POST'])
-@limit_requests(15, 60)
+@limit_requests(20, 60)
 def upload_ocr_transaction():
     user_token = request.headers.get('Authorization')
     if not user_token:

@@ -45,7 +45,9 @@ class GeminiService:
 
     def upload_decrypted_file_to_gemini(self, file_path: str):
         """Phương thức hỗ trợ để giải mã một tập tin, tải nó lên Gemini và xóa tập tin đã giải mã tạm thời."""
-        temp_path = file_path + ".decrypted"
+        import os
+        base, ext = os.path.splitext(file_path)
+        temp_path = f"{base}_decrypted{ext}"
         try:
             decrypted_data = self.encryption_service.decrypt_file(file_path)
             with open(temp_path, "wb") as temp_file:
