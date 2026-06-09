@@ -167,6 +167,21 @@ class SupabaseService:
 
                 filtered_results.sort(key=get_sort_key, reverse=True)
 
+                # TUYỆT ĐỐI KHÔNG TRIM (cắt) filtered_results sau khi đã sort theo Ngày/Năm vì sẽ vô tình xóa mất các kết quả gốc chứa câu trả lời chính xác nhất.
+                # Chỉ giới hạn số lượng amendment_docs để không làm loãng Context.
+                max_amendments = 10
+                
+                # Loại bỏ các đoạn trùng lặp trong amendment_docs (nếu có)
+                unique_amendments = []
+                seen_amends = set()
+                for am_doc in amendment_docs:
+                    doc_id_str = str(am_doc.get('id', am_doc.get('content', '')[:50]))
+                    if doc_id_str not in seen_amends:
+                        seen_amends.add(doc_id_str)
+                        unique_amendments.append(am_doc)
+                
+                amendment_docs = unique_amendments[:max_amendments]
+
                 # --- XÂY DỰNG CONTEXT CHO AI ---
                 context = "Dưới đây là cơ sở dữ liệu pháp luật (Ngữ cảnh pháp lý) được trích xuất từ hệ thống:\n\n"
                 

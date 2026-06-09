@@ -243,7 +243,7 @@ def chat():
     tax_result = None
     if revenue > 0:
         tax_result = tax_calculator.calculate_tax(float(revenue), category, method, expenses)
-        legal_context += f"\n\nKết quả tính thuế sơ bộ: {tax_result}"
+        legal_context += f"\n\nCông thức tính thuế sơ bộ: {tax_result}"
         
     # 7. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
     ai_response = gemini_service.generate_response(
