@@ -256,6 +256,7 @@ def chat():
     # Nếu lỗi API hoặc từ chối trả lời thì Nguồn tham chiếu = 0
     empty_sources_reason = None
     if is_relevant and not needs_rag_flag:
+        sources = []
         empty_sources_reason = "Bỏ qua RAG"
 
     if ai_response is None:

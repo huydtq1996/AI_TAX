@@ -36,6 +36,11 @@ class GuardService:
             "prevent_leakage": True,
             "no_empty_response": True
         }
+        # 4.1. Danh sách từ khóa rò rỉ dữ liệu (Prompt Leakage Detection in Output)
+        self.leakage_keywords = [
+            "system prompt", "system_prompt", "rag_context", "ngữ cảnh nội bộ",
+            "chỉ thị hệ thống", "cấu trúc dữ liệu", "khung câu hỏi", "prompt gốc"
+        ]
 
     # ==========================================
     # QUY TRÌNH KIỂM TRA ĐẦU VÀO (INPUT PIPELINE)
@@ -186,12 +191,8 @@ class GuardService:
 
         # 2. Tuyệt đối không tiết lộ chỉ thị hệ thống, prompt, context hoặc ngữ cảnh nội bộ
         if self.security_rules.get("prevent_leakage"):
-            leakage_keywords = [
-                "system prompt", "system_prompt", "rag_context", "ngữ cảnh nội bộ",
-                "chỉ thị hệ thống", "cấu trúc dữ liệu", "khung câu hỏi", "prompt gốc"
-            ]
             response_lower = response.lower()
-            for keyword in leakage_keywords:
+            for keyword in self.leakage_keywords:
                 if keyword in response_lower:
                     reason = f"Phát hiện rò rỉ thông tin prompt/internal trong phản hồi ('{keyword}')"
                     print(f"[Guard] BỊ CHẶN: {reason}")
