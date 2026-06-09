@@ -553,6 +553,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const onFastTaxSubmit = async (e: React.FormEvent | React.MouseEvent) => {
     e.preventDefault();
 
+    const form = (e.target as HTMLElement).closest('form');
+    if (form && !form.checkValidity()) {
+      form.reportValidity();
+      return;
+    }
+
     if (!revenue || Number(revenue) <= 0) {
       alert("Vui lòng nhập doanh thu lớn hơn 0");
       return;
