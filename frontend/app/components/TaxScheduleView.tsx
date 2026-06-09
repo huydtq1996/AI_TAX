@@ -163,13 +163,13 @@ export const TaxScheduleView: React.FC<TaxScheduleViewProps> = ({
                   getTaxSchedulePeriods().map((period) => (
                     <tr key={period.periodKey}>
                       <td style={{ fontWeight: '500' }}>{period.periodLabel}</td>
-                      <td>{formatVND(period.revenue)}</td>
-                      <td style={{ color: period.estimatedTax > 0 ? '#b45309' : 'inherit', fontWeight: period.estimatedTax > 0 ? '600' : 'normal' }}>
+                      <td style={{ textAlign: 'center' }}>{formatVND(period.revenue)}</td>
+                      <td style={{ color: period.estimatedTax > 0 ? '#b45309' : 'inherit', fontWeight: period.estimatedTax > 0 ? '600' : 'normal', textAlign: 'center' }}>
                         {formatVND(period.estimatedTax)}
                       </td>
-                      <td style={{ fontWeight: '500' }}>{formatDateDisplay(period.dueDate)}</td>
-                      <td style={{ color: period.paidAmount > 0 ? '#047857' : 'inherit' }}>{formatVND(period.paidAmount)}</td>
-                      <td>{period.paidDate ? formatDateDisplay(period.paidDate) : '-'}</td>
+                      <td style={{ fontWeight: '500', textAlign: 'center' }}>{formatDateDisplay(period.dueDate)}</td>
+                      <td style={{ color: period.paidAmount > 0 ? '#047857' : 'inherit', textAlign: 'center' }}>{formatVND(period.paidAmount)}</td>
+                      <td style={{ textAlign: 'center' }}>{period.paidDate ? formatDateDisplay(period.paidDate) : '-'}</td>
                       <td>
                         <span className={`stat-badge ${period.status === 'paid' ? 'badge-green' :
                           period.status === 'partial' ? 'badge-yellow' :
@@ -184,7 +184,7 @@ export const TaxScheduleView: React.FC<TaxScheduleViewProps> = ({
                       <td style={{ textAlign: 'center' }}>
                         <button
                           className="primary-button"
-                          style={{ padding: '6px 12px', fontSize: '0.8rem', borderRadius: '6px', minHeight: 'auto', height: '30px' }}
+                          style={{ padding: '6px 8px', fontSize: '0.8rem', borderRadius: '6px', minWidth: 'max-content', minHeight: 'auto', height: '30px' }}
                           onClick={() => handleOpenPaymentModal(period)}
                         >
                           Cập nhật nộp

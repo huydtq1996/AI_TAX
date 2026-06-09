@@ -372,7 +372,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <option value="thang" disabled={annualRevenue <= milestones.net_level_2}>
                         Kê khai theo Tháng (Doanh thu &gt; {(milestones.net_level_2 / 1000000000).toLocaleString('vi-VN')} tỷ/năm)
                       </option>
-                      <option value="tung_lan" disabled={annualRevenue > milestones.net_level_2}>
+                      <option value="lan_phat_sinh" disabled={annualRevenue > milestones.net_level_2}>
                         Nộp thuế theo từng lần phát sinh (Kinh doanh không thường xuyên)
                       </option>
                     </select>

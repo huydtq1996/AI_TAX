@@ -90,9 +90,30 @@ export default function Home() {
           setBusinessName(data.business_name || "My Business");
           setBusinessCategory(data.business_category || "ban_buon_ban_le");
           const declType = data.declaration_type || "quy";
-          const parts = declType.split('_');
-          setDeclarationType(parts[0] || "quy");
-          setTaxMethod(parts[1] || "doanh_thu");
+          let dType = "quy";
+          let tMethod = "doanh_thu";
+          
+          if (declType.startsWith('lan_phat_sinh_')) {
+            dType = 'lan_phat_sinh';
+            tMethod = declType.substring('lan_phat_sinh_'.length);
+          } else if (declType.startsWith('tung_lan_')) {
+            dType = 'lan_phat_sinh';
+            tMethod = declType.substring('tung_lan_'.length);
+          } else if (declType.startsWith('thang_')) {
+            dType = 'thang';
+            tMethod = declType.substring('thang_'.length);
+          } else if (declType.startsWith('quy_')) {
+            dType = 'quy';
+            tMethod = declType.substring('quy_'.length);
+          } else {
+            if (declType === 'lan_phat_sinh' || declType === 'tung_lan' || declType === 'thang' || declType === 'quy') {
+              dType = declType === 'tung_lan' ? 'lan_phat_sinh' : declType;
+              tMethod = "doanh_thu";
+            }
+          }
+          
+          setDeclarationType(dType);
+          setTaxMethod(tMethod);
         }
       }
     } catch (err) {
