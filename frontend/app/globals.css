@@ -734,6 +734,105 @@ body {
     color: var(--text-muted);
 }
 
+/* Source Badge and Modal */
+.source-badge {
+    cursor: pointer;
+    font-size: 0.7rem;
+    padding: 4px 12px;
+    background-color: rgba(79, 70, 229, 0.08);
+    border-radius: 100px;
+    border: 1px solid rgba(79, 70, 229, 0.15);
+    color: var(--primary);
+    font-weight: 600;
+    display: inline-block;
+    transition: all 0.2s ease;
+}
+
+.source-badge:hover {
+    background-color: var(--primary);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(79, 70, 229, 0.2);
+}
+
+.source-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    animation: fadeInContent 0.2s ease-out;
+}
+
+.source-modal-content {
+    background: white;
+    border-radius: 1rem;
+    width: 90%;
+    max-width: 600px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.source-modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.source-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--primary);
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.source-modal-close {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 1.25rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    padding: 4px;
+}
+
+.source-modal-close:hover {
+    color: var(--warning-red);
+}
+
+.source-modal-body {
+    padding: 1.5rem;
+    overflow-y: auto;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--text-main);
+    white-space: pre-wrap;
+}
+
+.source-modal-loading {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--text-muted);
+}
+
 /* Auth Screen Styling */
 .auth-container {
     display: flex;
@@ -1334,7 +1433,7 @@ body {
 
 .glass-modal-close-btn:hover {
     background: #e2e8f0;
-    color: var(--text-main);
+    color: var(--warning-red);
 }
 
 .glass-modal-body {

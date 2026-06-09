@@ -2,6 +2,7 @@ import os
 import time
 import io
 import math
+import requests
 import pandas as pd
 from collections import defaultdict
 from functools import wraps
@@ -291,6 +292,104 @@ def chat():
     }
     
     return jsonify(response)
+
+@app.route('/api/document', methods=['GET'])
+@limit_requests(30, 60)
+def get_document():
+    title = request.args.get('title')
+    user_token = request.headers.get('Authorization')
+    if not user_token:
+        user_token = request.args.get('supabase_token')
+    else:
+        if user_token.startswith("Bearer "):
+            user_token = user_token[7:]
+            
+    if not title:
+        return jsonify({"error": "Title is required"}), 400
+        
+    if not supabase_service.url or not supabase_service.key:
+         return jsonify({"error": "Supabase not configured"}), 500
+         
+    # Parse title "Nghị định số: 141/2026/NĐ-CP (Điều 4, Khoản 1)" -> law_name
+    import re
+    match = re.match(r'^(.*?)(?:\s*\((.*?)\))?$', title)
+    law_name = title
+    db_title = title
+    if match:
+        law_name = match.group(1).strip()
+        details = match.group(2)
+        if details:
+            # Chuyển "Điều 10, Khoản 1" thành "Điều 10 - Khoản 1"
+            details_str = details.replace(', ', ' - ')
+            db_title = f"{law_name} - {details_str}"
+            
+    headers = {"apikey": supabase_service.key, "Authorization": f"Bearer {supabase_service.key}"}
+    
+    try:
+        # Cách 1: Thử tìm chính xác bằng cột title (cấu trúc gốc trong DB)
+        params_exact = {
+            "select": "content,metadata,title",
+            "title": f"ilike.*{db_title}*",
+            "limit": 1
+        }
+        resp_exact = requests.get(f"{supabase_service.url}/rest/v1/tax_documents", headers=headers, params=params_exact, timeout=5)
+        if resp_exact.status_code == 200:
+            results_exact = resp_exact.json()
+            if results_exact and len(results_exact) > 0:
+                return jsonify({"title": title, "content": results_exact[0].get('content', '')})
+        
+        # Cách 2: Tìm kiếm tương đối (Fallback)
+        doc_info = supabase_service._parse_doc_id(law_name)
+        search_term = doc_info['full'] if doc_info else law_name
+        
+        params = {
+            "select": "content,metadata,title",
+            "content": f"ilike.*{search_term}*",
+            "limit": 50
+        }
+        
+        resp = requests.get(f"{supabase_service.url}/rest/v1/tax_documents", headers=headers, params=params, timeout=5)
+        
+        if resp.status_code == 200:
+            results = resp.json()
+            # Filter results to exactly match the title if possible
+            best_match = None
+            for row in results:
+                meta = row.get('metadata', {})
+                # Try exact db_title match on row's title first
+                if row.get('title') == db_title:
+                    best_match = row
+                    break
+                    
+                row_law_name = meta.get('law_name', row.get('title', ''))
+                article = meta.get('article', 'N/A')
+                section = meta.get('section', 'N/A')
+                
+                source_parts = []
+                if article and article != 'N/A':
+                    source_parts.append(f"Điều {article}")
+                if section and section != 'N/A':
+                    source_parts.append(f"Khoản {section}")
+                
+                source_label = row_law_name
+                if source_parts:
+                    source_label += f" ({', '.join(source_parts)})"
+                    
+                if source_label == title:
+                    best_match = row
+                    break
+                    
+            if not best_match and len(results) > 0:
+                best_match = results[0] # Fallback to first matching doc
+                
+            if best_match:
+                content = best_match.get('content', '')
+                return jsonify({"title": title, "content": content})
+                
+    except Exception as e:
+        print(f"Error fetching document: {e}")
+        
+    return jsonify({"error": "Không tìm thấy nội dung văn bản này."}), 404
 
 @app.route('/api/calculate-tax', methods=['POST'])
 @limit_requests(30, 60)

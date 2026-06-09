@@ -42,6 +42,57 @@ const DEFAULT_GREETING: Message = {
   isUser: false,
 };
 
+const SourceDetails = ({ sources, onSourceClick }: { sources: string[], onSourceClick: (title: string) => void }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '0.75rem',
+          fontWeight: '700',
+          color: 'var(--primary)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.03em',
+          userSelect: 'none'
+        }}
+      >
+        <i className="fa-solid fa-circle-info"></i>
+        Nguồn tham chiếu ({sources?.length || 0})
+        <i className={`fa-solid fa-chevron-${isOpen ? 'up' : 'down'}`} style={{ fontSize: '0.6rem', marginLeft: 'auto', transition: 'transform 0.3s' }}></i>
+      </div>
+
+      {isOpen && (
+        <div className="sources-list" style={{
+          marginTop: '10px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '8px',
+          animation: 'slideDown 0.2s ease-out forwards'
+        }}>
+          {sources.map((source: string, idx: number) => (
+            <span 
+              key={idx} 
+              className="source-badge"
+              onClick={(e) => {
+                 e.stopPropagation();
+                 onSourceClick(source);
+              }}
+            >
+              {source}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  );
+};
+
 export const ChatView: React.FC<ChatViewProps> = ({
   userToken,
   userEmail,
@@ -71,6 +122,36 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [isFilesLoading, setIsFilesLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<any | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
+  const [selectedSource, setSelectedSource] = useState<{title: string, content: string} | null>(null);
+  const [isSourceLoading, setIsSourceLoading] = useState(false);
+
+  const handleSourceClick = async (title: string) => {
+    setIsSourceLoading(true);
+    setSelectedSource({ title, content: "" }); // Open modal in loading state
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "";
+      const token = typeof window !== 'undefined' ? localStorage.getItem('supabase_token') || "" : "";
+      const queryParams = new URLSearchParams({ title });
+      if (token) queryParams.append('supabase_token', token);
+      
+      const response = await fetch(`${apiUrl}/api/document?${queryParams.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.content) {
+          setSelectedSource({ title, content: data.content });
+        } else {
+          setSelectedSource({ title, content: data.error || "Không thể tải nội dung." });
+        }
+      } else {
+        setSelectedSource({ title, content: "Lỗi kết nối máy chủ khi tải tài liệu." });
+      }
+    } catch (error) {
+      console.error("Error fetching document:", error);
+      setSelectedSource({ title, content: "Đã có lỗi xảy ra." });
+    } finally {
+      setIsSourceLoading(false);
+    }
+  };
 
   // Refs inside ChatView
   const chatWindowRef = useRef<HTMLDivElement>(null);
@@ -701,47 +782,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                                   Nguồn tham chiếu: 0 ({msg.ragBypassedReason})
                                 </div>
                               ) : (
-                                <details style={{ cursor: 'pointer' }}>
-                                  <summary style={{
-                                    listStyle: 'none',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '700',
-                                    color: 'var(--primary)',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.03em',
-                                    outline: 'none'
-                                  }}>
-                                    <i className="fa-solid fa-circle-info"></i>
-                                    Nguồn tham chiếu ({msg.sources?.length || 0})
-                                    <i className="fa-solid fa-chevron-down" style={{ fontSize: '0.6rem', marginLeft: 'auto', transition: 'transform 0.3s' }}></i>
-                                  </summary>
-
-                                  <div className="sources-list" style={{
-                                    marginTop: '10px',
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: '6px',
-                                    animation: 'slideDown 0.2s ease-out'
-                                  }}>
-                                    {msg.sources?.map((source: string, idx: number) => (
-                                      <span key={idx} style={{
-                                        fontSize: '0.7rem',
-                                        padding: '3px 10px',
-                                        backgroundColor: 'rgba(79, 70, 229, 0.08)',
-                                        borderRadius: '100px',
-                                        border: '1px solid rgba(79, 70, 229, 0.15)',
-                                        color: 'var(--primary)',
-                                        fontWeight: '500',
-                                        display: 'inline-block'
-                                      }}>
-                                        {source}
-                                      </span>
-                                    ))}
-                                  </div>
-                                </details>
+                                <SourceDetails sources={msg.sources || []} onSourceClick={handleSourceClick} />
                               )}
                             </div>
                           ) : null}
@@ -1073,6 +1114,37 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <i className="fa-solid fa-trash-can"></i> Xóa
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal hiển thị nội dung tài liệu */}
+      {selectedSource && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={() => setSelectedSource(null)}>
+          <div style={{ backgroundColor: 'white', borderRadius: '12px', width: '90%', maxWidth: '700px', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 8px 30px rgba(0,0,0,0.2)', animation: 'slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ padding: '20px', borderBottom: '1px solid #eee', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '1.1rem', color: '#1a1a1a', fontWeight: 'bold', lineHeight: 1.4 }}>
+                <i className="fa-solid fa-file-lines" style={{ color: '#5f6368', marginTop: '3px' }}></i> {selectedSource.title}
+              </h3>
+              <button className="glass-modal-close-btn" onClick={() => setSelectedSource(null)} style={{ alignSelf: 'flex-start' }}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px', position: 'relative', fontSize: '0.95rem', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }}>
+              {isSourceLoading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '10px', padding: '40px' }}>
+                  <i className="fa-solid fa-spinner fa-spin" style={{ fontSize: '2rem', color: '#4f46e5' }}></i>
+                  <span style={{ fontSize: '0.9rem', color: '#4f46e5', fontWeight: '600' }}>Đang tải nội dung văn bản...</span>
+                </div>
+              ) : (
+                selectedSource.content
+              )}
+            </div>
+
+            <div style={{ padding: '15px', borderTop: '1px solid #eee', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => setSelectedSource(null)} className="primary-button" style={{ padding: '10px 32px', fontSize: '14px', borderRadius: '24px' }}>Đóng</button>
             </div>
           </div>
         </div>
