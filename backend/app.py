@@ -86,16 +86,11 @@ def get_tax_rates():
     display_info = {}
     for cat, meta in tax_calculator.category_metadata.items():
         r = rates.get(cat, {"gtgt": 0, "tncn": 0})
-        if cat in ("cho_thue_tai_san_dai_ly", "dich_vu_noi_dung_so"):
-            tncn_val = r["tncn"] * 100
-            tncn_pct = f"{tncn_val:.0f}%" if tncn_val.is_integer() else f"{tncn_val:.1f}%"
-            group_str = f"{meta['group_name']} (TNCN {tncn_pct})"
-        else:
-            gtgt_val = r["gtgt"] * 100
-            tncn_val = r["tncn"] * 100
-            gtgt_pct = f"{gtgt_val:.0f}%" if gtgt_val.is_integer() else f"{gtgt_val:.1f}%"
-            tncn_pct = f"{tncn_val:.0f}%" if tncn_val.is_integer() else f"{tncn_val:.1f}%"
-            group_str = f"{meta['group_name']} (GTGT {gtgt_pct}, TNCN {tncn_pct})"
+        gtgt_val = r.get("gtgt", 0) * 100
+        tncn_val = r.get("tncn", 0) * 100
+        gtgt_pct = f"{gtgt_val:.0f}%" if float(gtgt_val).is_integer() else f"{gtgt_val:.1f}%"
+        tncn_pct = f"{tncn_val:.0f}%" if float(tncn_val).is_integer() else f"{tncn_val:.1f}%"
+        group_str = f"{meta['group_name']} (GTGT {gtgt_pct}, TNCN {tncn_pct})"
             
         display_info[cat] = {
             "name": meta["name"],

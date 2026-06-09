@@ -22,7 +22,7 @@ class TaxCalculator:
             "san_xuat_ttdb": {"gtgt": 0.02, "tncn": 0.01},
             "hoat_dong_khac": {"gtgt": 0.02, "tncn": 0.01},
             
-            # Nhóm đặc thù: Thuế suất TNCN 5%
+            # Nhóm đặc thù: Thuế suất (GTGT 5%, TNCN 5%)
             "cho_thue_tai_san_dai_ly": {"gtgt": 0.05, "tncn": 0.05},
             "dich_vu_noi_dung_so": {"gtgt": 0.05, "tncn": 0.05}
         }

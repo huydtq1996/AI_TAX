@@ -142,12 +142,12 @@ class GuardService:
             "thuế", "vat", "gtgt", "tncn", "ttđb", "thuế xuất nhập khẩu",
             "kê khai", "khai báo", "nộp thuế", "hoàn thuế", "quyết toán", "tờ khai",
             "hóa đơn", "giá trị gia tăng", "thu nhập cá nhân", "loại thuế", "thuế suất",
-            "hộ kinh doanh", "cá nhân kinh doanh", "mã số thuế", "mst"
+            "hộ kinh doanh", "cá nhân kinh doanh", "mã số thuế", "mst", "tính thuế"
         ]
         
         # Nhóm B: Từ khóa ngữ cảnh (Context) -> Trọng số vừa (+1)
         context_keywords = [
-            "tính", "doanh thu", "chi phí", "lợi nhuận", "kế toán",
+            "thu chi", "doanh thu", "chi phí", "lợi nhuận", "kế toán",
             "khấu trừ", "miễn giảm", "chịu thuế", "luật", "nghị định", "thông tư",
             "thu nhập", "mặt hàng", "xuất khẩu", "nhập khẩu", "bán hàng", "kinh doanh",
             "phạt", "chậm nộp", "trốn thuế", "đóng thuế", "nghĩa vụ"
