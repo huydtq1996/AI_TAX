@@ -169,7 +169,7 @@ class SupabaseService:
 
                 # TUYỆT ĐỐI KHÔNG TRIM (cắt) filtered_results sau khi đã sort theo Ngày/Năm vì sẽ vô tình xóa mất các kết quả gốc chứa câu trả lời chính xác nhất.
                 # Chỉ giới hạn số lượng amendment_docs để không làm loãng Context.
-                max_amendments = 6
+                max_amendments = 10
                 
                 # Loại bỏ các đoạn trùng lặp trong amendment_docs (nếu có)
                 unique_amendments = []
