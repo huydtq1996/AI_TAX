@@ -169,7 +169,7 @@ class GuardService:
         if has_core and score >= 3:
             return True, ""
         else:
-            reason = "Câu hỏi không liên quan đến thuế"
+            reason = "Câu hỏi không liên quan đến thuế cho hộ kinh doanh/cá nhân kinh doanh"
             print(f"[Guard] BỊ CHẶN: {reason}")
             return False, reason
 
