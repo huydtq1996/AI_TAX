@@ -69,66 +69,219 @@ def insert_to_supabase(data):
 # ==========================================
 # 2. AI TRÍCH XUẤT VÀ CHIA ĐOẠN (STRUCTURAL CHUNKING)
 # ==========================================
+def extract_metadata_with_gemini(header_text):
+    """Trích xuất tên luật, ngày ban hành và loại văn bản từ phần đầu tài liệu"""
+    print("⏳ Đang trích xuất thông tin chung của tài liệu (Tên văn bản, ngày ban hành)...")
+    prompt = """
+    Hãy đọc phần đầu của văn bản pháp luật sau và trích xuất thông tin dưới dạng JSON:
+    {
+      "law_name": "Tên/Số hiệu văn bản đầy đủ (ví dụ: Luật Quản lý thuế số 108/2025/QH15 hoặc Thông tư số: 18/2026/TT-BTC)",
+      "issue_date": "Ngày ban hành định dạng YYYY-MM-DD",
+      "type": "Loại văn bản (ví dụ: Luật, Nghị định, Thông tư, Quyết định)"
+    }
+    Lưu ý: Chỉ trả về JSON duy nhất, không thêm giải thích nào khác. Nếu không tìm thấy thông tin nào, hãy để null.
+    """
+    for attempt in range(3):
+        try:
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=[header_text, prompt],
+                config=types.GenerateContentConfig(response_mime_type="application/json")
+            )
+            text_resp = response.text.strip()
+            text_resp = re.sub(r'```json\n|```json|```', '', text_resp).strip()
+            metadata = json.loads(text_resp)
+            return metadata
+        except Exception as e:
+            if "503" in str(e) or "overloaded" in str(e).lower():
+                wait_time = (attempt + 1) * 2
+                print(f"  [!] Server bận, đang thử lại trích xuất metadata sau {wait_time}s...")
+                time.sleep(wait_time)
+            else:
+                print(f"⚠️ Không thể trích xuất metadata bằng AI: {e}. Sẽ sử dụng chế độ mặc định.")
+                break
+    return {
+        "law_name": None,
+        "issue_date": None,
+        "type": None
+    }
+
+def split_text_by_articles(text, max_chars=25000):
+    """Chia nhỏ văn bản dựa trên ranh giới của Điều hoặc Chương để đảm bảo không bị mất đoạn và vừa vặn token"""
+    lines = text.split('\n')
+    sections = []
+    current_section = []
+    current_length = 0
+    
+    # Nhận diện các dòng bắt đầu bằng "Điều " hoặc "Chương "
+    pattern = re.compile(r'^\s*(Điều \d+|Chương [IVXLCDM\d]+)', re.IGNORECASE)
+    
+    for line in lines:
+        line_len = len(line) + 1  # Cộng thêm ký tự newline
+        # Nếu dòng tiếp theo làm vượt quá độ dài tối đa, đẩy đoạn hiện tại đi
+        if current_length + line_len > max_chars and current_section:
+            sections.append('\n'.join(current_section))
+            current_section = [line]
+            current_length = line_len
+        else:
+            # Ngắt đoạn khi gặp "Điều" hoặc "Chương" và độ dài đoạn cũ đã đủ lớn (> 12000 kí tự)
+            if pattern.match(line) and current_length > 12000:
+                sections.append('\n'.join(current_section))
+                current_section = [line]
+                current_length = line_len
+            else:
+                current_section.append(line)
+                current_length += line_len
+                
+    if current_section:
+        sections.append('\n'.join(current_section))
+        
+    return sections
+
 def extract_and_chunk_with_gemini(content_parts):
     print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu theo cấu trúc pháp luật (Điều > Khoản > Điểm)...")
     model_name = "gemini-2.5-flash" 
     
-    prompt = """
-    Bạn là một chuyên gia Pháp luật cấp cao. Hãy đọc tài liệu đính kèm và bóc tách nội dung theo cấu trúc pháp luật Việt Nam.
-    
-    NHIỆM VỤ CỦA BẠN:
-    1. Trích xuất chính xác ngày ban hành (issue_date) của văn bản.
-    2. Chia nhỏ văn bản thành các đoạn (chunks) dựa trên cấu trúc: Điều > Khoản > Điểm.
-    3. Mỗi chunk tương ứng với một đơn vị nội dung hoàn chỉnh (thường là một Khoản hoặc một Điều nếu điều đó ngắn).
-    4. Tiêu đề (title) của mỗi chunk phải ghi rõ: [Tên văn bản] - [Điều X] - [Khoản Y].
-    5. Nội dung (content) phải giữ nguyên văn, không tóm tắt, bao gồm cả bối cảnh của Điều đó nếu đoạn đó là một Khoản.
-    
-    YÊU CẦU ĐỊNH DẠNG JSON:
-    Trả về duy nhất một mảng JSON:
-    [
-      {
-        "title": "Thông tư số: 18/2026/TT-BTC - Điều 4 - Khoản 1",
-        "content": "Nội dung đầy đủ của khoản 1 điều 4...",
-        "issue_date": "YYYY-MM-DD",
-        "metadata": {
-            "law_name": "Thông tư số: 18/2026/TT-BTC",
-            "article": "4",
-            "section": "1",
-            "type": "Thông tư"
-        }
-      }
-    ]
-    LƯU Ý: Tuyệt đối không thêm văn bản ngoài JSON. Nếu không rõ ngày ban hành, để null cho issue_date.
-    """
-    
-    for attempt in range(3):
-        try:
-            # Chuẩn hóa đầu vào
-            contents = content_parts if isinstance(content_parts, list) else [content_parts]
-            contents.append(prompt)
+    if isinstance(content_parts, str):
+        # 1. Trích xuất metadata trước từ phần đầu tiên của văn bản
+        metadata = extract_metadata_with_gemini(content_parts[:10000])
+        law_name = metadata.get("law_name") or "Tài liệu"
+        issue_date = metadata.get("issue_date")
+        law_type = metadata.get("type") or "Văn bản pháp luật"
+        
+        print(f"🔹 Thông tin trích xuất: Luật: {law_name} | Ngày ban hành: {issue_date} | Loại: {law_type}")
+        
+        # 2. Phân đoạn văn bản nếu nó quá dài
+        sections = split_text_by_articles(content_parts)
+        print(f"📄 Văn bản được chia thành {len(sections)} phần để xử lý tránh quá tải giới hạn output token...")
+        
+        all_chunks = []
+        for idx, section in enumerate(sections):
+            print(f"⏳ Đang xử lý phần {idx+1}/{len(sections)}...")
             
-            response = client.models.generate_content(
-                model=model_name,
-                contents=contents,
-                config=types.GenerateContentConfig(response_mime_type="application/json")
-            )
+            section_prompt = f"""
+            Bạn là một chuyên gia Pháp luật cấp cao. Hãy đọc đoạn văn bản đính kèm thuộc văn bản pháp luật "{law_name}" và bóc tách nội dung thành các đoạn (chunks) dựa trên cấu trúc: Điều > Khoản > Điểm.
             
-            # Làm sạch JSON (xử lý cả trường hợp AI bọc trong ```json)
-            text_resp = response.text.strip()
-            text_resp = re.sub(r'```json\n|```json|```', '', text_resp).strip()
-                
-            chunks = json.loads(text_resp)
-            print(f"✅ Thành công! Đã bóc tách {len(chunks)} đoạn luật.")
-            return chunks
-        except Exception as e:
-            if "503" in str(e) or "overloaded" in str(e).lower():
-                wait_time = (attempt + 1) * 5
-                print(f"  [!] Server quá tải (503). Đang thử lại sau {wait_time}s...")
-                time.sleep(wait_time)
+            THÔNG TIN VĂN BẢN:
+            - Tên văn bản: {law_name}
+            - Ngày ban hành: {issue_date or "Không rõ"}
+            - Loại văn bản: {law_type}
+            
+            NHIỆM VỤ CỦA BẠN:
+            1. Chia nhỏ đoạn văn bản này thành các đoạn (chunks) tương ứng với từng Điều/Khoản/Điểm cụ thể.
+            2. Mỗi chunk tương ứng với một đơn vị nội dung hoàn chỉnh (thường là một Khoản hoặc một Điều nếu điều đó ngắn).
+            3. Tiêu đề (title) của mỗi chunk phải ghi rõ dạng: "{law_name} - [Điều X] - [Khoản Y]" (nếu là cả Điều thì ghi "{law_name} - [Điều X]").
+            4. Nội dung (content) phải giữ nguyên văn bản gốc tiếng Việt, không tóm tắt, không sửa từ ngữ, bao gồm cả bối cảnh của Điều đó nếu đoạn đó là một Khoản để người đọc hiểu được nội dung của Khoản đó nói về cái gì.
+            5. Cung cấp metadata chính xác cho mỗi chunk:
+               - "law_name": "{law_name}"
+               - "article": số thứ tự của Điều (ví dụ: "4")
+               - "section": số thứ tự của Khoản (ví dụ: "1"), nếu không có Khoản thì để null.
+               - "type": "{law_type}"
+            
+            YÊU CẦU ĐỊNH DẠNG JSON:
+            Trả về duy nhất một mảng JSON có cấu trúc như sau:
+            [
+              {{
+                "title": "{law_name} - Điều X - Khoản Y",
+                "content": "Nội dung đầy đủ của khoản Y...",
+                "issue_date": {json.dumps(issue_date)},
+                "metadata": {{
+                    "law_name": "{law_name}",
+                    "article": "X",
+                    "section": "Y",
+                    "type": "{law_type}"
+                }}
+              }}
+            ]
+            LƯU Ý: Tuyệt đối không thêm bất kỳ văn bản giải thích nào ngoài JSON. Chỉ trả về mảng JSON.
+            """
+            
+            chunks_part = []
+            for attempt in range(3):
+                try:
+                    response = client.models.generate_content(
+                        model=model_name,
+                        contents=[section, section_prompt],
+                        config=types.GenerateContentConfig(response_mime_type="application/json")
+                    )
+                    text_resp = response.text.strip()
+                    text_resp = re.sub(r'```json\n|```json|```', '', text_resp).strip()
+                    chunks_part = json.loads(text_resp)
+                    break
+                except Exception as e:
+                    if "503" in str(e) or "overloaded" in str(e).lower():
+                        wait_time = (attempt + 1) * 5
+                        print(f"  [!] Server quá tải (503). Đang thử lại sau {wait_time}s...")
+                        time.sleep(wait_time)
+                    else:
+                        print(f"❌ Lỗi AI ở phần {idx+1}: {e}")
+                        break
+            
+            if chunks_part:
+                all_chunks.extend(chunks_part)
+                print(f"  > Bóc tách thành công {len(chunks_part)} đoạn từ phần {idx+1}.")
             else:
-                print(f"❌ Lỗi AI: {e}")
-                break
-    return []
+                print(f"  > ⚠️ Cảnh báo: Không bóc tách được dữ liệu từ phần {idx+1}.")
+                
+        print(f"✅ Hoàn thành bóc tách! Tổng số đoạn luật: {len(all_chunks)}")
+        return all_chunks
+
+    else:
+        # Fallback cho các file upload (PDF/DOCX) sử dụng File API của Google Cloud AI
+        prompt = """
+        Bạn là một chuyên gia Pháp luật cấp cao. Hãy đọc tài liệu đính kèm và bóc tách nội dung theo cấu trúc pháp luật Việt Nam.
+        
+        NHIỆM VỤ CỦA BẠN:
+        1. Trích xuất chính xác ngày ban hành (issue_date) của văn bản.
+        2. Chia nhỏ văn bản thành các đoạn (chunks) dựa trên cấu trúc: Điều > Khoản > Điểm.
+        3. Mỗi chunk tương ứng với một đơn vị nội dung hoàn chỉnh (thường là một Khoản hoặc một Điều nếu điều đó ngắn).
+        4. Tiêu đề (title) của mỗi chunk phải ghi rõ: [Tên văn bản] - [Điều X] - [Khoản Y].
+        5. Nội dung (content) phải giữ nguyên văn, không tóm tắt, bao gồm cả bối cảnh của Điều đó nếu đoạn đó là một Khoản.
+        
+        YÊU CẦU ĐỊNH DẠNG JSON:
+        Trả về duy nhất một mảng JSON:
+        [
+          {
+            "title": "Thông tư số: 18/2026/TT-BTC - Điều 4 - Khoản 1",
+            "content": "Nội dung đầy đủ của khoản 1 điều 4...",
+            "issue_date": "YYYY-MM-DD",
+            "metadata": {
+                "law_name": "Thông tư số: 18/2026/TT-BTC",
+                "article": "4",
+                "section": "1",
+                "type": "Thông tư"
+            }
+          }
+        ]
+        LƯU Ý: Tuyệt đối không thêm văn bản ngoài JSON. Nếu không rõ ngày ban hành, để null cho issue_date.
+        """
+        for attempt in range(3):
+            try:
+                contents = content_parts if isinstance(content_parts, list) else [content_parts]
+                contents.append(prompt)
+                
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=contents,
+                    config=types.GenerateContentConfig(response_mime_type="application/json")
+                )
+                
+                # Làm sạch JSON
+                text_resp = response.text.strip()
+                text_resp = re.sub(r'```json\n|```json|```', '', text_resp).strip()
+                    
+                chunks = json.loads(text_resp)
+                print(f"✅ Thành công! Đã bóc tách {len(chunks)} đoạn luật.")
+                return chunks
+            except Exception as e:
+                if "503" in str(e) or "overloaded" in str(e).lower():
+                    wait_time = (attempt + 1) * 5
+                    print(f"  [!] Server quá tải (503). Đang thử lại sau {wait_time}s...")
+                    time.sleep(wait_time)
+                else:
+                    print(f"❌ Lỗi AI: {e}")
+                    break
+        return []
 
 # ==========================================
 # 3. TIẾP NHẬN ĐẦU VÀO (FILE / URL)
