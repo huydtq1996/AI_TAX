@@ -84,7 +84,7 @@ def extract_metadata_with_gemini(header_text):
     for attempt in range(3):
         try:
             response = client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-3.1-flash-lite",
                 contents=[header_text, prompt],
                 config=types.GenerateContentConfig(response_mime_type="application/json")
             )
@@ -140,7 +140,7 @@ def split_text_by_articles(text, max_chars=25000):
 
 def extract_and_chunk_with_gemini(content_parts):
     print("\n⏳ Đang nhờ AI Gemini bóc tách tài liệu theo cấu trúc pháp luật (Điều > Khoản > Điểm)...")
-    model_name = "gemini-2.5-flash" 
+    model_name = "gemini-3.1-flash-lite" 
     
     if isinstance(content_parts, str):
         # 1. Trích xuất metadata trước từ phần đầu tiên của văn bản

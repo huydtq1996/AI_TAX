@@ -224,7 +224,7 @@ class GeminiService:
 
     def extract_transactions_from_file(self, file_path):
         """
-        Sử dụng Gemini 2.5 Flash để đọc hóa đơn/biên lai (ảnh, PDF) và trích xuất danh sách giao dịch dưới dạng JSON.
+        Sử dụng Gemini 3.1 Flash Lite để đọc hóa đơn/biên lai (ảnh, PDF) và trích xuất danh sách giao dịch dưới dạng JSON.
         """
         if not self.client:
             return None
