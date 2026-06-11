@@ -150,7 +150,11 @@ class GuardService:
             "thu chi", "doanh thu", "chi phí", "lợi nhuận", "kế toán",
             "khấu trừ", "miễn giảm", "chịu thuế", "luật", "nghị định", "thông tư",
             "thu nhập", "mặt hàng", "xuất khẩu", "nhập khẩu", "bán hàng", "kinh doanh",
-            "phạt", "chậm nộp", "trốn thuế", "đóng thuế", "nghĩa vụ"
+            "phạt", "chậm nộp", "trốn thuế", "đóng thuế", "nghĩa vụ", "dịch vụ", "spa",
+            "làm đẹp", "thẩm mỹ", "sửa chữa", "tư vấn", "xây dựng", "gia công", "sản xuất",
+            "bán lẻ", "bán buôn", "nội dung số", "cho thuê tài sản", "đại lý bảo hiểm",
+            "xổ số", "đa cấp", "lưu trú", "vận tải", "nhà hàng", "quán ăn", "cafe",
+            "sản phẩm số", "quảng cáo trực tuyến", "cá cược", "giải trí"
         ]
         
         # Chấm điểm
