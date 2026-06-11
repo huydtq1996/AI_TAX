@@ -145,9 +145,14 @@ def extract_and_chunk_with_gemini(content_parts):
     if isinstance(content_parts, str):
         # 1. Trích xuất metadata trước từ phần đầu tiên của văn bản
         metadata = extract_metadata_with_gemini(content_parts[:10000])
-        law_name = metadata.get("law_name") or "Tài liệu"
+        law_name = metadata.get("law_name") or "Tài liệu pháp luật"
+        # Rút gọn law_name nếu quá dài dòng (chỉ giữ lại phần loại văn bản và số hiệu)
+        import re
+        match_l = re.search(r'\d+/\d{4}/[\w-]+', law_name)
+        if match_l:
+            law_name = law_name[:match_l.end()].strip()
         issue_date = metadata.get("issue_date")
-        law_type = metadata.get("type") or "Văn bản pháp luật"
+        law_type = metadata.get("type") or "Luật"
         
         print(f"🔹 Thông tin trích xuất: Luật: {law_name} | Ngày ban hành: {issue_date} | Loại: {law_type}")
         
@@ -218,6 +223,21 @@ def extract_and_chunk_with_gemini(content_parts):
                         break
             
             if chunks_part:
+                # Post-process to ensure clean metadata and title
+                for item in chunks_part:
+                    meta = item.get("metadata", {})
+                    l_name = meta.get("law_name")
+                    if l_name:
+                        match_l = re.search(r'\d+/\d{4}/[\w-]+', l_name)
+                        if match_l:
+                            cleaned_l = l_name[:match_l.end()].strip()
+                            meta["law_name"] = cleaned_l
+                            # Update title of chunk
+                            t = item.get("title")
+                            if t:
+                                parts = t.split(' - ')
+                                if parts:
+                                    item["title"] = ' - '.join([cleaned_l] + parts[1:])
                 all_chunks.extend(chunks_part)
                 print(f"  > Bóc tách thành công {len(chunks_part)} đoạn từ phần {idx+1}.")
             else:
@@ -271,6 +291,20 @@ def extract_and_chunk_with_gemini(content_parts):
                 text_resp = re.sub(r'```json\n|```json|```', '', text_resp).strip()
                     
                 chunks = json.loads(text_resp)
+                # Post-process to ensure clean metadata and title
+                for item in chunks:
+                    meta = item.get("metadata", {})
+                    l_name = meta.get("law_name")
+                    if l_name:
+                        match_l = re.search(r'\d+/\d{4}/[\w-]+', l_name)
+                        if match_l:
+                            cleaned_l = l_name[:match_l.end()].strip()
+                            meta["law_name"] = cleaned_l
+                            t = item.get("title")
+                            if t:
+                                parts = t.split(' - ')
+                                if parts:
+                                    item["title"] = ' - '.join([cleaned_l] + parts[1:])
                 print(f"✅ Thành công! Đã bóc tách {len(chunks)} đoạn luật.")
                 return chunks
             except Exception as e:

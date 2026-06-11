@@ -39,7 +39,7 @@ class GeminiService:
         self.guard_service = GuardService()
         if api_key:
             self.client = genai.Client(api_key=api_key)
-            self.model_name = 'gemini-2.5-flash'
+            self.model_name = 'gemini-3.1-flash-lite'
         else:
             self.client = None
             print("Warning: GEMINI_API_KEY is not set.")
