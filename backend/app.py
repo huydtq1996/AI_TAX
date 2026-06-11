@@ -238,7 +238,17 @@ def chat():
     tax_result = None
     if revenue > 0:
         tax_result = tax_calculator.calculate_tax(float(revenue), category, method, expenses)
-        legal_context += f"\n\nCông thức tính thuế sơ bộ: {tax_result}"
+        
+        if not tax_result.get("is_taxable"):
+            legal_context += f"\n\n[HỆ THỐNG ĐÃ TÍNH TOÁN - BẮT BUỘC BÁO CHO NGƯỜI DÙNG LÝ DO NÀY]:\n{tax_result.get('reason')}"
+        else:
+            tax_result_md = f"""- Thuế GTGT: {tax_result.get('tax_gtgt', 0):,.0f} VNĐ
+- Thuế TNCN: {tax_result.get('tax_tncn', 0):,.0f} VNĐ
+- Tổng cộng thuế phải nộp: {tax_result.get('total_tax', 0):,.0f} VNĐ
+
+GIẢI THÍCH CHI TIẾT:
+{tax_result.get('explanation', '')}"""
+            legal_context += f"\n\n[HỆ THỐNG ĐÃ TÍNH TOÁN - BẮT BUỘC SỬ DỤNG CHÍNH XÁC CÁC SỐ TIỀN VÀ BÊ NGUYÊN PHẦN GIẢI THÍCH DƯỚI ĐÂY ĐỂ TRẢ LỜI, TUYỆT ĐỐI KHÔNG TỰ TÍNH LẠI HOẶC SỬA TỶ LỆ]:\n{tax_result_md.replace(',', '.')}"
         
     # 7. Gemini API - Tư vấn (Đưa file vào phân tích nếu có)
     ai_response = gemini_service.generate_response(

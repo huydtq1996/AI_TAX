@@ -76,12 +76,12 @@ const SourceDetails = ({ sources, onSourceClick }: { sources: string[], onSource
           animation: 'slideDown 0.2s ease-out forwards'
         }}>
           {sources.map((source: string, idx: number) => (
-            <span 
-              key={idx} 
+            <span
+              key={idx}
               className="source-badge"
               onClick={(e) => {
-                 e.stopPropagation();
-                 onSourceClick(source);
+                e.stopPropagation();
+                onSourceClick(source);
               }}
             >
               {source}
@@ -122,8 +122,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [isFilesLoading, setIsFilesLoading] = useState(false);
   const [fileToDelete, setFileToDelete] = useState<any | null>(null);
   const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
-  const [selectedSource, setSelectedSource] = useState<{title: string, content: string} | null>(null);
+  const [selectedSource, setSelectedSource] = useState<{ title: string, content: string } | null>(null);
   const [isSourceLoading, setIsSourceLoading] = useState(false);
+  const [showRevenueWarning, setShowRevenueWarning] = useState(false);
 
   const handleSourceClick = async (title: string) => {
     setIsSourceLoading(true);
@@ -133,7 +134,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       const token = typeof window !== 'undefined' ? localStorage.getItem('supabase_token') || "" : "";
       const queryParams = new URLSearchParams({ title });
       if (token) queryParams.append('supabase_token', token);
-      
+
       const response = await fetch(`${apiUrl}/api/document?${queryParams.toString()}`);
       if (response.ok) {
         const data = await response.json();
@@ -519,6 +520,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
       return;
     }
 
+    const numericRevenue = Number(revenue);
+    const NET_LEVEL_1 = 3000000000;
+
+    if (numericRevenue > NET_LEVEL_1 && method === 'doanh_thu') {
+      setShowRevenueWarning(true);
+      return;
+    }
+
     const methodText = method === 'doanh_thu' ? 'Doanh thu' : 'Thu nhập tính thuế';
 
     let catText = category;
@@ -561,6 +570,14 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     if (!revenue || Number(revenue) <= 0) {
       alert("Vui lòng nhập doanh thu lớn hơn 0");
+      return;
+    }
+
+    const numericRevenue = Number(revenue);
+    const NET_LEVEL_1 = 3000000000;
+
+    if (numericRevenue > NET_LEVEL_1 && method === 'doanh_thu') {
+      setShowRevenueWarning(true);
       return;
     }
 
@@ -1125,6 +1142,33 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       )}
 
+      {/* Modal cảnh báo doanh thu > net_level_1 */}
+      {showRevenueWarning && (
+        <div className="glass-modal-overlay" style={{ zIndex: 1010 }}>
+          <div className="glass-modal-card" style={{ maxWidth: '450px' }}>
+            <div className="glass-modal-header" style={{ borderBottom: '1px solid #fee2e2' }}>
+              <h3 style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}><i className="fa-solid fa-triangle-exclamation"></i> Phương pháp không hợp lệ</h3>
+              <button className="glass-modal-close-btn" onClick={() => setShowRevenueWarning(false)}>
+                <i className="fa-solid fa-xmark"></i>
+              </button>
+            </div>
+            <div className="glass-modal-body" style={{ padding: '20px', color: '#1e293b' }}>
+              <p style={{ margin: '0 0 16px 0', fontSize: '0.95rem', fontWeight: '500' }}>
+                Doanh thu của bạn vượt quá 3 tỷ VNĐ. Theo quy định pháp luật, bạn không được phép chọn "Tính theo Doanh thu". Vui lòng chuyển sang phương pháp "Tính theo Thu nhập tính thuế".
+              </p>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button type="button" className="glass-btn-primary" onClick={() => {
+                  setMethod('thu_nhap');
+                  setShowRevenueWarning(false);
+                }}>
+                  <i className="fa-solid fa-check"></i> Đổi phương pháp
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal hiển thị nội dung tài liệu */}
       {selectedSource && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }} onClick={() => setSelectedSource(null)}>
@@ -1137,7 +1181,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <i className="fa-solid fa-xmark"></i>
               </button>
             </div>
-            
+
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px', position: 'relative', fontSize: '0.95rem', lineHeight: '1.6', color: '#333', whiteSpace: 'pre-wrap' }}>
               {isSourceLoading ? (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: '10px', padding: '40px' }}>

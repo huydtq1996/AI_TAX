@@ -17,10 +17,10 @@ class TaxCalculator:
             "van_tai_hang_hoa_hanh_khach": {"gtgt": 0.03, "tncn": 0.02},
             "xay_dung_co_bao_thau": {"gtgt": 0.03, "tncn": 0.02},
             
-            # Nhóm 4: Hoạt động kinh doanh khác (GTGT 1%, TNCN 2%)
-            "khai_thac_khoang_san": {"gtgt": 0.01, "tncn": 0.02},
-            "san_xuat_ttdb": {"gtgt": 0.01, "tncn": 0.02},
-            "hoat_dong_khac": {"gtgt": 0.01, "tncn": 0.02},
+            # Nhóm 4: Hoạt động kinh doanh khác (GTGT 2%, TNCN 2%)
+            "khai_thac_khoang_san": {"gtgt": 0.02, "tncn": 0.02},
+            "san_xuat_ttdb": {"gtgt": 0.02, "tncn": 0.02},
+            "hoat_dong_khac": {"gtgt": 0.02, "tncn": 0.02},
             
             # Nhóm đặc thù: Thuế suất (GTGT 5%, TNCN 5%)
             "cho_thue_tai_san_dai_ly": {"gtgt": 0.05, "tncn": 0.05},
