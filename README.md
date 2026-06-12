@@ -2,11 +2,11 @@
 
 **Trợ lý AI tin cậy dành riêng cho hộ kinh doanh cá thể Việt Nam**
 
-Tax_AI là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch tài chính dành riêng cho hộ kinh doanh cá thể. Dự án kết hợp sức mạnh của LLM (Gemini 2.5 Flash) và cơ chế RAG (Retrieval-Augmented Generation) để đảm bảo tính chính xác về pháp lý và bảo mật dữ liệu tuyệt đối.
+Tax_AI là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch tài chính dành riêng cho hộ kinh doanh cá thể. Dự án kết hợp sức mạnh của LLM (Gemini 3.1 Flash Lite) và cơ chế RAG (Retrieval-Augmented Generation) để đảm bảo tính chính xác về pháp lý và bảo mật dữ liệu tuyệt đối.
 
 > *"AI tốt không chỉ là AI chính xác — mà là AI mà con người có thể tin tưởng, hiểu được và kiểm soát được."*
 > 
-> — **Nhóm thực hiện**
+> — **Nhóm thực hiện đồ án**
 
 ---
 
@@ -26,7 +26,7 @@ Tax_AI là hệ thống hỗ trợ khai báo thuế và quản lý kế hoạch 
 | :--- | :--- |
 | **Frontend** | Next.js 14.2 (TypeScript), Vanilla CSS |
 | **Backend** | Flask 3.1 (Python 3.14) |
-| **LLM Engine** | Gemini 2.5 Flash |
+| **LLM Engine** | Gemini 3.1 Flash Lite |
 | **Vector DB** | Supabase (PostgreSQL + pgvector) |
 | **Embedding** | Gemini-Embedding-2 (768 dimensions) |
 
@@ -86,7 +86,7 @@ Hệ thống được thiết kế dựa trên 5 trụ cột đạo đức:
 2. **Bias Control:** Thuật toán tính thuế trung lập, không phân biệt vùng miền, giới tính.
 3. **Robustness:** Kháng lỗi mạnh mẽ với lớp bảo vệ GuardService.
 4. **Explainability:** Mọi câu trả lời đều có trích dẫn Điều/Khoản/Điểm từ nguồn luật chính thống.
-5. **Privacy:** Mã hóa dữ liệu ngay khi nhận và không lưu trữ dữ liệu thô.
+5. **Social Impact:** Khách quan về mặt pháp lý, tuân thủ quy định về bảo mật thông tin cá nhân.
 
 ---
 
