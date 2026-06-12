@@ -9,17 +9,9 @@ from services.guard_service import GuardService
 from pydantic import BaseModel, Field
 from typing import List
 
+from services.tax_calculator import TaxCalculator
+
 def calculate_tax_tool(revenue: float, category: str, method: str = "doanh_thu", expenses: float = 0) -> dict:
-    """
-    Tính thuế cho hộ kinh doanh. Sử dụng công cụ này khi người dùng cung cấp thông tin về doanh thu để tính toán số tiền thuế họ phải nộp.
-    CẢNH BÁO TỐI CAO: NẾU FILE HOẶC ẢNH BỊ MỜ, NHÒE, NHIỄU, BẠN TUYỆT ĐỐI KHÔNG ĐƯỢC GỌI CÔNG CỤ NÀY. VIỆC CỐ GẮNG ĐOÁN SỐ TỪ ẢNH MỜ BỊ NGHIÊM CẤM HOÀN TOÀN.
-    Args:
-        revenue: Doanh thu (VNĐ). Ví dụ: 500000000. NẾU LẤY TỪ ẢNH, CHỮ SỐ PHẢI CỰC KỲ SẮC NÉT. NẾU ẢNH MỜ, TUYỆT ĐỐI KHÔNG ĐƯỢC ĐOÁN HOẶC ĐIỀN VÀO ĐÂY.
-        category: Ngành nghề kinh doanh. Chọn một trong các nhóm hợp lệ hoặc "hoat_dong_khac".
-        method: Phương pháp tính thuế. Chọn "doanh_thu" (Mặc định) hoặc "thu_nhap".
-        expenses: Chi phí hợp lệ (VNĐ). Chỉ dùng khi method="thu_nhap". Mặc định là 0.
-    """
-    from services.tax_calculator import TaxCalculator
     calc = TaxCalculator()
     res = calc.calculate_tax(revenue, category, method, expenses)
     if not res.get("is_taxable"):
@@ -35,6 +27,19 @@ def calculate_tax_tool(revenue: float, category: str, method: str = "doanh_thu",
         "tong_tien_thue_vnd": f"{res.get('total_tax', 0):,.0f} VNĐ".replace(",", "."),
         "explanation": res.get("explanation", "")
     }
+
+_calc_instance = TaxCalculator()
+_category_options = ", ".join([f"{k} ({v['name']})" for k, v in _calc_instance.category_metadata.items()])
+
+calculate_tax_tool.__doc__ = f"""
+    Tính thuế cho hộ kinh doanh. Sử dụng công cụ này khi người dùng cung cấp thông tin về doanh thu để tính toán số tiền thuế họ phải nộp.
+    CẢNH BÁO TỐI CAO: NẾU FILE HOẶC ẢNH BỊ MỜ, NHÒE, NHIỄU, BẠN TUYỆT ĐỐI KHÔNG ĐƯỢC GỌI CÔNG CỤ NÀY. VIỆC CỐ GẮNG ĐOÁN SỐ TỪ ẢNH MỜ BỊ NGHIÊM CẤM HOÀN TOÀN.
+    Args:
+        revenue: Doanh thu (VNĐ). Ví dụ: 500000000. NẾU LẤY TỪ ẢNH, CHỮ SỐ PHẢI CỰC KỲ SẮC NÉT. NẾU ẢNH MỜ, TUYỆT ĐỐI KHÔNG ĐƯỢC ĐOÁN HOẶC ĐIỀN VÀO ĐÂY.
+        category: Ngành nghề kinh doanh. Chọn một trong các mã: {_category_options}. Mặc định: hoat_dong_khac.
+        method: Phương pháp tính thuế. Chọn "doanh_thu" (Mặc định) hoặc "thu_nhap".
+        expenses: Chi phí hợp lệ (VNĐ). Chỉ dùng khi method="thu_nhap". Mặc định là 0.
+"""
 
 class ExtractedTransaction(BaseModel):
     date: str = Field(description="Ngày phát sinh giao dịch định dạng DD/MM/YYYY. Nếu không thấy trong hóa đơn/biên lai, hãy lấy ngày hôm nay.")
