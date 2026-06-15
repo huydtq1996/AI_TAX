@@ -1,6 +1,5 @@
 import re
 import time
-from google.genai import types
 
 class GuardService:
     def __init__(self):

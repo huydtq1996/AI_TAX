@@ -1,7 +1,7 @@
 import os
 import requests
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, date, timedelta, timezone
 from services.encryption_service import EncryptionService
 from services.tax_calculator import TaxCalculator
 
@@ -136,19 +136,17 @@ class TaxScheduleService:
         return False
 
     def get_adjusted_due_date(self, date_str: str) -> str:
-        import datetime
         try:
-            date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
+            d = datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
             return date_str
             
-        while self.is_holiday(date):
-            date += datetime.timedelta(days=1)
+        while self.is_holiday(d):
+            d += timedelta(days=1)
             
-        return date.strftime("%Y-%m-%d")
+        return d.strftime("%Y-%m-%d")
 
     def get_tax_schedule_periods(self, transactions, declaration_type, business_category, tax_payments, tax_rates, user_token=None):
-        import datetime
         periods = []
         
         # Helper get category rates
@@ -476,8 +474,8 @@ class TaxScheduleService:
                         tncn_tax = max(0.0, cumulative_rev_end - self.tax_calculator.revenue_milestones["exemption"]) * tncn_rate - max(0.0, cumulative_rev_start - self.tax_calculator.revenue_milestones["exemption"]) * tncn_rate
                         estimated_tax = gtgt_tax + tncn_tax
                 
-                tx_date = datetime.datetime.strptime(tx["date"], "%Y-%m-%d").date()
-                base_due_date_str = (tx_date + datetime.timedelta(days=10)).strftime("%Y-%m-%d")
+                tx_date = datetime.strptime(tx["date"], "%Y-%m-%d").date()
+                base_due_date_str = (tx_date + timedelta(days=10)).strftime("%Y-%m-%d")
                 due_date = self.get_adjusted_due_date(base_due_date_str)
                 
                 payment_record = next((p for p in tax_payments if p.get("period_key") == period_key), None)

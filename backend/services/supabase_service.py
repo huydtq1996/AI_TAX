@@ -1,6 +1,7 @@
 import os
 import requests
 import re
+from datetime import datetime, timezone
 from services.encryption_service import EncryptionService
 
 class SupabaseService:
@@ -81,7 +82,6 @@ class SupabaseService:
                 json=data
             )
             if response.status_code in (200, 201):
-                from datetime import datetime, timezone
                 current_time = datetime.now(timezone.utc).isoformat()
                 requests.patch(
                     f"{self.url}/rest/v1/chat_sessions?id=eq.{session_id}",
@@ -592,7 +592,6 @@ class SupabaseService:
             enc_cat = self.encryption_service.encrypt_text(business_category)
             enc_type = self.encryption_service.encrypt_text(declaration_type)
             
-            from datetime import datetime, timezone
             current_time = datetime.now(timezone.utc).isoformat()
 
             # Try to update with declaration_type
@@ -707,7 +706,6 @@ class SupabaseService:
         enc_amount = self.encryption_service.encrypt_text(str(amount))
         enc_desc = self.encryption_service.encrypt_text(description)
         
-        from datetime import datetime, timezone
         current_time = datetime.now(timezone.utc).isoformat()
         
         data = {

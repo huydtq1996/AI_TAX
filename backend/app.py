@@ -7,7 +7,7 @@ import pandas as pd
 from collections import defaultdict
 from functools import wraps
 from dotenv import load_dotenv
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 
 from services.gemini_service import GeminiService
@@ -206,7 +206,6 @@ def chat():
     file_name = None
     file_type = None
     if file:
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
         file_name = file.filename
         file_type = file_name.split('.')[-1].upper() if '.' in file_name else "FILE"
         file_path = os.path.join(UPLOAD_DIR, file_name)
@@ -486,8 +485,6 @@ def download_file(filename):
     if filename not in allowed_filenames:
         return jsonify({"error": "Forbidden: Bạn không có quyền truy cập tệp tin này"}), 403
         
-    from flask import send_file
-    import io
     import mimetypes
     
     file_path = os.path.join(UPLOAD_DIR, filename)
@@ -761,7 +758,6 @@ def download_transaction_template():
             df.to_excel(writer, index=False, sheet_name='Sheet1')
         output.seek(0)
         
-        from flask import send_file
         return send_file(
             output,
             mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
