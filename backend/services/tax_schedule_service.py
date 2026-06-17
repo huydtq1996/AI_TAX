@@ -158,7 +158,7 @@ class TaxScheduleService:
         revenue_transactions = [tx for tx in transactions if float(tx.get("amount") or 0) > 0]
         
         # Tính tổng doanh thu tích lũy trong năm hiện tại để áp dụng các ngưỡng tự động
-        current_year_now = datetime.date.today().year
+        current_year_now = date.today().year
         total_annual_revenue_now = 0
         for tx in revenue_transactions:
             if tx.get("date") and tx["date"].startswith(str(current_year_now)):
